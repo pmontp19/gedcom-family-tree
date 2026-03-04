@@ -1,13 +1,17 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@gedcom/shared": ["./packages/shared/src"],
+      "@gedcom/frontend": ["./packages/frontend/src"],
+      "@gedcom/backend": ["./packages/backend/src"]
     }
   },
-  "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+    { "path": "./packages/shared" },
+    { "path": "./packages/frontend" },
+    { "path": "./packages/backend" }
+  ],
+  "files": []
 }

@@ -1,0 +1,40 @@
+{
+  "name": "@gedcom/parser",
+  "version": "0.1.0",
+  "description": "GEDCOM 5.5.1 file parser with support for MyHeritage and other formats",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "gedcom",
+    "genealogy",
+    "family tree",
+    "parser",
+    "myheritage"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "peerDependencies": {
+    "@gedcom/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}
