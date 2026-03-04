@@ -2,7 +2,9 @@
 
 Interactive family tree viewer with AI-powered assistant.
 
-![Screenshot](screenshot.png)
+![Demo](demo-screenshot.png)
+
+Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree.
 
 ## Features
 
