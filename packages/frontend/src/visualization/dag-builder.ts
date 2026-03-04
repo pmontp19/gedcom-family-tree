@@ -221,17 +221,32 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     return { minX, maxX };
   }
 
-  function shiftUnit(unit: FamilyUnit, shift: number) {
+  function shiftUnit(unit: FamilyUnit, dx: number, dy = 0) {
     for (const spId of unit.spouseIds) {
       const n = nodeById.get(spId);
-      if (n?.x !== undefined) n.x += shift;
+      if (n?.x !== undefined) { n.x += dx; n.y = (n.y ?? 0) + dy; }
     }
     // Only shift family node if this unit "owns" it (has spouses — non-empty unit)
     if (unit.spouseIds.length > 0 && unit.famNodeId) {
       const fn = nodeById.get(unit.famNodeId);
-      if (fn?.x !== undefined) fn.x += shift;
+      if (fn?.x !== undefined) { fn.x += dx; fn.y = (fn.y ?? 0) + dy; }
     }
-    unit.children.forEach(c => shiftUnit(c, shift));
+    unit.children.forEach(c => shiftUnit(c, dx, dy));
+  }
+
+  /** Find all stub children in a unit's subtree, paired with their immediate parent unit. */
+  function findStubsWithParent(
+    unit: FamilyUnit,
+    result: Array<{ stubFamId: string; ownerUnit: FamilyUnit }> = []
+  ): Array<{ stubFamId: string; ownerUnit: FamilyUnit }> {
+    for (const child of unit.children) {
+      if (child.famNodeId && child.spouseIds.length === 0 && child.children.length === 0) {
+        result.push({ stubFamId: child.famNodeId, ownerUnit: unit });
+      } else {
+        findStubsWithParent(child, result);
+      }
+    }
+    return result;
   }
 
   // Layout each root tree and offset them side by side
@@ -243,6 +258,66 @@ function layoutFamilyTree(graph: GraphData): GraphData {
 
     shiftUnit(rootUnit, offsetX - minX);
     offsetX += (maxX - minX) + 60;
+  }
+
+  // Reposition ancestor-only root trees so they sit directly above their stubs in the main tree
+  for (const rootUnit of rootUnits) {
+    const stubs = findStubsWithParent(rootUnit);
+    if (stubs.length === 0) continue;
+
+    for (const { stubFamId, ownerUnit } of stubs) {
+      const stubNode = nodeById.get(stubFamId);
+      const ownerFamNode = ownerUnit.famNodeId ? nodeById.get(ownerUnit.famNodeId) : undefined;
+      if (!stubNode || stubNode.x === undefined || stubNode.y === undefined) continue;
+      if (!ownerFamNode || ownerFamNode.x === undefined || ownerFamNode.y === undefined) continue;
+
+      // Target: ownerUnit's family node one GEN_H above the stub
+      const targetX = stubNode.x;
+      const targetY = stubNode.y - GEN_H;
+
+      const dx = targetX - ownerFamNode.x;
+      const dy = targetY - ownerFamNode.y;
+
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        shiftUnit(rootUnit, dx, dy);
+      }
+    }
+  }
+
+  // Collision resolution: iteratively push root units apart at each Y level
+  {
+    const nodeToRoot = new Map<string, FamilyUnit>();
+    for (const ru of rootUnits) {
+      const tag = (u: FamilyUnit) => { u.spouseIds.forEach(id => nodeToRoot.set(id, ru)); u.children.forEach(tag); };
+      tag(ru);
+    }
+    const minSpacing = NODE_W + 30;
+    for (let pass = 0; pass < 8; pass++) {
+      const byY = new Map<number, TreeNode[]>();
+      for (const node of graph.nodes) {
+        if (node.type === 'individual' && node.x !== undefined && node.y !== undefined) {
+          const level = Math.round(node.y / 10) * 10;
+          const list = byY.get(level) ?? []; list.push(node); byY.set(level, list);
+        }
+      }
+      let anyOverlap = false;
+      for (const nodes of byY.values()) {
+        nodes.sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
+        for (let i = 1; i < nodes.length; i++) {
+          const left = nodes[i - 1], right = nodes[i];
+          const gap = (right.x ?? 0) - (left.x ?? 0);
+          if (gap < minSpacing) {
+            const shift = minSpacing - gap;
+            const rightRoot = nodeToRoot.get(right.id);
+            if (rightRoot && rightRoot !== nodeToRoot.get(left.id)) {
+              shiftUnit(rightRoot, shift);
+              anyOverlap = true;
+            }
+          }
+        }
+      }
+      if (!anyOverlap) break;
+    }
   }
 
   // Recompute family node X as midpoint of actual spouse positions
