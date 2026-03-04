@@ -19,29 +19,38 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
   const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
 
   return (
-    <Card className="h-full">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg">
+    <Card className="h-full rounded-none md:rounded-lg border-0 md:border">
+      {/* Drag handle for mobile */}
+      <div className="md:hidden flex justify-center pt-2 pb-1">
+        <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+      </div>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 px-4 pt-2 md:pt-6">
+        <CardTitle className="text-base md:text-lg">
           {getDisplayName(individual)}
         </CardTitle>
         {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-9 w-9 md:h-10 md:w-10 shrink-0"
+          >
             <X className="h-4 w-4" />
           </Button>
         )}
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[calc(100vh-200px)]">
+      <CardContent className="px-4 pb-4">
+        <ScrollArea className="h-[calc(60vh-120px)] md:h-[calc(100vh-200px)]">
           {/* Basic Info */}
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-4 w-4 shrink-0" />
               <span>{getLifeYears(individual) || 'No dates'}</span>
             </div>
 
             {individual.sex && (
               <div className="flex items-center gap-2 text-sm">
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span>{individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : 'Unknown'}</span>
               </div>
             )}
@@ -57,8 +66,8 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
                 )}
                 {individual.birth.place && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {individual.birth.place}
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="break-words">{individual.birth.place}</span>
                   </p>
                 )}
               </div>
@@ -75,8 +84,8 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
                 )}
                 {individual.death.place && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {individual.death.place}
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="break-words">{individual.death.place}</span>
                   </p>
                 )}
               </div>
@@ -145,7 +154,7 @@ function PersonLink({ id, data, onClick }: PersonLinkProps) {
 
   return (
     <button
-      className="text-sm text-primary hover:underline block text-left"
+      className="text-sm text-primary hover:underline block text-left py-1 touch-manipulation min-h-[44px] flex items-center"
       onClick={() => onClick?.(id)}
     >
       {getDisplayName(ind)}

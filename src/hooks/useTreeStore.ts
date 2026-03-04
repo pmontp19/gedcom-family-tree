@@ -59,9 +59,11 @@ interface TreeState {
   format: string;
   data: GedcomData | null;
   selectedId: string | null;
+  personPanelOpen: boolean;
 
   loadFile: (content: string, filename: string) => void;
   selectPerson: (id: string | null) => void;
+  togglePersonPanel: () => void;
   clear: () => void;
 }
 
@@ -71,6 +73,7 @@ export const useTreeStore = create<TreeState>((set) => ({
   format: 'Unknown',
   data: null,
   selectedId: null,
+  personPanelOpen: false,
 
   loadFile: (content, filename) => {
     try {
@@ -90,7 +93,9 @@ export const useTreeStore = create<TreeState>((set) => ({
     }
   },
 
-  selectPerson: (id) => set({ selectedId: id }),
+  selectPerson: (id) => set({ selectedId: id, personPanelOpen: !!id }),
+
+  togglePersonPanel: () => set((s) => ({ personPanelOpen: !s.personPanelOpen })),
 
   clear: () => set({
     rawData: null,
