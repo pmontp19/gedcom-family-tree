@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useTreeStore } from '@/hooks';
 import { FamilyTree, TreeControls } from '@/components/tree';
 import { FileUpload, PersonPanel } from '@/components/panels';
+import { AgentPanel } from '@/components/panels/AgentPanel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Users } from 'lucide-react';
+import { FileText, Users, Bot } from 'lucide-react';
 
 function App() {
   const { data, filename, format, selectedId, loadFile, selectPerson, clear } = useTreeStore();
+  const [agentOpen, setAgentOpen] = useState(false);
 
   const selectedPerson = selectedId && data ? data.individuals.get(selectedId) : null;
 
@@ -43,9 +46,20 @@ function App() {
             {data.individuals.size} individuals, {data.families.size} families
           </span>
         </div>
-        <Button variant="outline" size="sm" onClick={clear}>
-          Load Different File
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={agentOpen ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAgentOpen(o => !o)}
+            className="flex items-center gap-1.5"
+          >
+            <Bot className="h-4 w-4" />
+            Ask AI
+          </Button>
+          <Button variant="outline" size="sm" onClick={clear}>
+            Load Different File
+          </Button>
+        </div>
       </header>
 
       {/* Main content */}
@@ -74,6 +88,11 @@ function App() {
               onSelectPerson={selectPerson}
             />
           </div>
+        )}
+
+        {/* Agent panel */}
+        {agentOpen && (
+          <AgentPanel onClose={() => setAgentOpen(false)} />
         )}
       </div>
     </div>
