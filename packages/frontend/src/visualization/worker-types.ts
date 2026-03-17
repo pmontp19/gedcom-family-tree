@@ -12,7 +12,7 @@ export interface SerializableTreeNode {
 export interface SerializableTreeLink {
   source: string;
   target: string;
-  type: 'marriage' | 'child';
+  type: 'marriage' | 'child' | 'ancestor-stub';
 }
 
 export interface SerializableGraphData {

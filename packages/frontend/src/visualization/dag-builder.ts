@@ -6,6 +6,7 @@ export interface TreeNode {
   data: Individual | null; // null for family connector nodes
   type: 'individual' | 'family';
   familyId?: string; // For family nodes
+  isAncestorStub?: boolean; // Phantom parent stub for truncated ancestors
   x?: number;
   y?: number;
 }
@@ -13,7 +14,7 @@ export interface TreeNode {
 export interface TreeLink {
   source: string;
   target: string;
-  type: 'marriage' | 'child';
+  type: 'marriage' | 'child' | 'ancestor-stub';
 }
 
 export interface GraphData {
@@ -50,7 +51,7 @@ export function buildDAG(data: GedcomData): GraphData {
 // Layout constants matching TreeNode component
 const NODE_W = 160;
 const COUPLE_GAP = 10;   // gap between spouses
-const GEN_H = 140;       // vertical center-to-center distance
+export const GEN_H = 140;       // vertical center-to-center distance
 
 /** A node in the layout tree. Either a family unit or a standalone individual. */
 interface FamilyUnit {
@@ -332,6 +333,78 @@ function layoutFamilyTree(graph: GraphData): GraphData {
       // Use the Y of the first spouse
       const firstSpouse = nodeById.get(spouseIds[0]);
       if (firstSpouse?.y !== undefined) famNode.y = firstSpouse.y;
+    }
+  }
+
+  // Position unpositioned spouses next to their positioned partners in the same family
+  // (fixes case where secondary marriages are ignored by the layout tree)
+  for (const [famNodeId, spouseIds] of spousesOf) {
+    if (spouseIds.length < 2) continue;
+    const positioned = spouseIds.filter(id => nodeById.get(id)?.x !== undefined);
+    const unpositioned = spouseIds.filter(id => nodeById.get(id)?.x === undefined);
+    if (positioned.length > 0 && unpositioned.length > 0) {
+      const referenceSpouse = nodeById.get(positioned[0]);
+      if (!referenceSpouse || referenceSpouse.x === undefined || referenceSpouse.y === undefined) continue;
+      const refY = referenceSpouse.y;
+      let nextX = referenceSpouse.x + NODE_W / 2 + COUPLE_GAP;
+      for (const id of unpositioned) {
+        const n = nodeById.get(id);
+        if (n) {
+          n.x = nextX;
+          n.y = refY;
+          nextX += NODE_W + COUPLE_GAP;
+        }
+      }
+      // Reposition family node as midpoint of all spouses
+      const famNode = nodeById.get(famNodeId);
+      if (famNode) {
+        const allXs = spouseIds.map(id => nodeById.get(id)?.x).filter((x): x is number => x !== undefined);
+        if (allXs.length > 0) {
+          famNode.x = allXs.reduce((a, b) => a + b, 0) / allXs.length;
+          famNode.y = refY;
+        }
+      }
+    }
+  }
+
+  // Resolve collisions for secondary spouses: if they overlap with existing nodes, push them apart
+  const minSpacing = NODE_W + 30;
+  for (let pass = 0; pass < 4; pass++) {
+    const byY = new Map<number, TreeNode[]>();
+    for (const node of graph.nodes) {
+      if (node.type === 'individual' && node.x !== undefined && node.y !== undefined) {
+        const level = Math.round(node.y / 10) * 10;
+        const list = byY.get(level) ?? [];
+        list.push(node);
+        byY.set(level, list);
+      }
+    }
+    let anyCollision = false;
+    for (const nodes of byY.values()) {
+      nodes.sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
+      for (let i = 1; i < nodes.length; i++) {
+        const left = nodes[i - 1], right = nodes[i];
+        const gap = (right.x ?? 0) - (left.x ?? 0);
+        if (gap < minSpacing) {
+          const shift = minSpacing - gap;
+          if (right.x !== undefined) {
+            right.x += shift;
+            anyCollision = true;
+          }
+        }
+      }
+    }
+    if (!anyCollision) break;
+  }
+
+  // Update family node positions after collision resolution
+  for (const [famNodeId, spouseIds] of spousesOf) {
+    if (spouseIds.length < 1) continue;
+    const famNode = nodeById.get(famNodeId);
+    if (!famNode) continue;
+    const xs = spouseIds.map(id => nodeById.get(id)?.x).filter((x): x is number => x !== undefined);
+    if (xs.length > 0) {
+      famNode.x = xs.reduce((a, b) => a + b, 0) / xs.length;
     }
   }
 

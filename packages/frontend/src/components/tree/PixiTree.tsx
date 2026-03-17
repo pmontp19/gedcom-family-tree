@@ -156,7 +156,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+      style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
     />
   );
 }
@@ -189,6 +189,16 @@ function rebuildScene(
     if (node.x === undefined || node.y === undefined) continue;
 
     const container = createNodeSprite(node, detailLevel, node.id === selectedId, onSelect, palette);
+    container.position.set(node.x, node.y);
+    world.addChild(container);
+    nodeContainers.set(node.id, container);
+  }
+
+  // Ancestor stub nodes
+  for (const node of graph.nodes) {
+    if (node.type !== 'family' || !node.isAncestorStub) continue;
+    if (node.x === undefined || node.y === undefined) continue;
+    const container = createAncestorStubSprite(detailLevel, palette);
     container.position.set(node.x, node.y);
     world.addChild(container);
     nodeContainers.set(node.id, container);
@@ -290,6 +300,31 @@ function createNodeSprite(
   return container;
 }
 
+function createAncestorStubSprite(detailLevel: DetailLevel, palette: Palette): Container {
+  const container = new Container();
+  if (detailLevel === 'dot') {
+    const gfx = new Graphics();
+    gfx.circle(0, 0, 3).fill(0x94a3b8);
+    container.addChild(gfx);
+    return container;
+  }
+  const PILL_W = 50, PILL_H = 22, GAP = 12;
+  const gfx = new Graphics();
+  // Left pill (ghost parent)
+  gfx.roundRect(-GAP / 2 - PILL_W, -PILL_H / 2, PILL_W, PILL_H, 4)
+     .stroke({ color: 0x94a3b8, width: 1.5 })
+     .fill({ color: palette.nodeBg, alpha: 0.85 });
+  // Right pill (ghost parent)
+  gfx.roundRect(GAP / 2, -PILL_H / 2, PILL_W, PILL_H, 4)
+     .stroke({ color: 0x94a3b8, width: 1.5 })
+     .fill({ color: palette.nodeBg, alpha: 0.85 });
+  // Connecting bar between pills
+  gfx.moveTo(-GAP / 2, 0).lineTo(GAP / 2, 0).stroke({ color: 0x94a3b8, width: 1.5 });
+  container.addChild(gfx);
+  container.alpha = 0.75;
+  return container;
+}
+
 function updateSelection(container: Container, node: GTreeNode, selected: boolean, darkMode?: boolean) {
   if (container.children.length === 0) return;
   const bg = container.getChildAt(0) as Graphics;
@@ -352,5 +387,26 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: Palette) {
        .lineTo(target.x, midY)
        .lineTo(target.x, endY)
        .stroke({ color: palette.edgeChild, width: 2 });
+  }
+
+  // Ancestor stub connections
+  const STUB_HALF_H = 11; // half of PILL_H (22)
+  for (const link of graph.links) {
+    if (link.type !== 'ancestor-stub') continue;
+    const source = nodeMap.get(link.source); // stub node
+    const target = nodeMap.get(link.target); // individual
+    if (!source || !target ||
+        source.x === undefined || source.y === undefined ||
+        target.x === undefined || target.y === undefined) continue;
+
+    const startY = source.y + STUB_HALF_H;
+    const endY = target.y - NODE_HALF_H;
+    const midY = startY + (endY - startY) * 0.5;
+
+    gfx.moveTo(source.x, startY)
+       .lineTo(source.x, midY)
+       .lineTo(target.x, midY)
+       .lineTo(target.x, endY)
+       .stroke({ color: 0x94a3b8, width: 1.5 });
   }
 }

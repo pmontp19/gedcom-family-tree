@@ -1,0 +1,2 @@
+name = "gedcom-family-tree"
+pages_build_output_dir = "packages/frontend/dist"

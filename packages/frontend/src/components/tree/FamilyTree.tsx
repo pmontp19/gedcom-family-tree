@@ -3,6 +3,7 @@ import * as d3 from 'd3-selection';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import type { GedcomData, Individual } from '@gedcom/shared';
 import { buildDAG, calculateBounds } from '@/visualization';
+import { GEN_H } from '@/visualization/dag-builder';
 import type { GraphData } from '@/visualization';
 import { useLayoutWorker } from '@/hooks/useLayoutWorker';
 import type { NodePosition } from '@/visualization/worker-types';
@@ -53,6 +54,34 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
             const pos = posMap.get(node.id);
             if (pos) { node.x = pos.x; node.y = pos.y; }
           }
+
+          // Detect boundary individuals whose parents aren't in the subgraph
+          const hiddenFamGroups = new Map<string, string[]>();
+          for (const node of rawGraph.nodes) {
+            if (node.type !== 'individual' || !node.data) continue;
+            const famc = node.data.famc;
+            if (famc && !data.families.get(famc)) {
+              const group = hiddenFamGroups.get(famc) ?? [];
+              group.push(node.id);
+              hiddenFamGroups.set(famc, group);
+            }
+          }
+          // Insert phantom stub nodes + links
+          if (hiddenFamGroups.size > 0) {
+            const nodeById = new Map(rawGraph.nodes.map(n => [n.id, n]));
+            for (const [famId, indIds] of hiddenFamGroups) {
+              const stubId = `STUB_FAM_${famId}`;
+              const children = indIds.map(id => nodeById.get(id)).filter(Boolean);
+              const xs = children.map(c => c!.x ?? 0);
+              const midX = xs.reduce((a, b) => a + b, 0) / xs.length;
+              const minY = Math.min(...children.map(c => c!.y ?? 0));
+              rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: minY - GEN_H });
+              for (const indId of indIds) {
+                rawGraph.links.push({ source: stubId, target: indId, type: 'ancestor-stub' });
+              }
+            }
+          }
+
           setGraph(rawGraph);
           setLayoutPending(false);
         }).catch((err) => {
@@ -85,11 +114,8 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
         (ch - 100) / (bounds.height + NODE_HEIGHT),
         1
       );
-      const MIN_SCALE = 0.18;
-      const scale = Math.max(fitScale, MIN_SCALE);
-      const centerX = fitScale >= MIN_SCALE
-        ? (cw - bounds.width * scale) / 2 - bounds.minX * scale
-        : 60 - bounds.minX * scale;
+      const scale = Math.max(fitScale, 0.02);
+      const centerX = (cw - bounds.width * scale) / 2 - bounds.minX * scale;
       const centerY = (ch - bounds.height * scale) / 2 - bounds.minY * scale;
 
       sel.call(
@@ -109,8 +135,28 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       const container = canvasContainerRef.current;
       const sel = d3.select(container);
 
+      const individualNodes = graph.nodes.filter(n => n.type === 'individual');
+      const bounds = calculateBounds(graph, NODE_WIDTH, NODE_HEIGHT);
+      const containerRect = container.getBoundingClientRect();
+      const cw = Math.max(containerRect.width, 200);
+      const ch = Math.max(containerRect.height, 200);
+
+      const fitScale = individualNodes.length > 0
+        ? Math.min(
+            (cw - 100) / (bounds.width + NODE_WIDTH),
+            (ch - 100) / (bounds.height + NODE_HEIGHT),
+            1
+          )
+        : 0.5;
+      const MIN_SCALE = Math.max(fitScale * 0.9, 0.02);
+      const PADDING = Math.max(NODE_WIDTH * 2, 300);
+
       const zoomBehavior = zoom<HTMLDivElement, unknown>()
-        .scaleExtent([0.02, 3])
+        .scaleExtent([MIN_SCALE, 3])
+        .translateExtent([
+          [bounds.minX - PADDING, bounds.minY - PADDING],
+          [bounds.maxX + PADDING, bounds.maxY + PADDING],
+        ])
         .on('zoom', (event) => {
           setTransform({
             x: event.transform.x,
@@ -123,22 +169,9 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       sel.call(zoomBehavior);
 
       // Fit to container on initial load
-      const individualNodes = graph.nodes.filter(n => n.type === 'individual');
       if (individualNodes.length > 0) {
-        const bounds = calculateBounds(graph, NODE_WIDTH, NODE_HEIGHT);
-        const containerRect = container.getBoundingClientRect();
-        const cw = Math.max(containerRect.width, 200);
-        const ch = Math.max(containerRect.height, 200);
-        const fitScale = Math.min(
-          (cw - 100) / (bounds.width + NODE_WIDTH),
-          (ch - 100) / (bounds.height + NODE_HEIGHT),
-          1
-        );
-        const MIN_SCALE = 0.18;
         const scale = Math.max(fitScale, MIN_SCALE);
-        const centerX = fitScale >= MIN_SCALE
-          ? (cw - bounds.width * scale) / 2 - bounds.minX * scale
-          : 60 - bounds.minX * scale;
+        const centerX = (cw - bounds.width * scale) / 2 - bounds.minX * scale;
         const centerY = (ch - bounds.height * scale) / 2 - bounds.minY * scale;
 
         sel.call(zoomBehavior.transform, zoomIdentity.translate(centerX, centerY).scale(scale));

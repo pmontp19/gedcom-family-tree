@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Users, Bot, User, Moon, Sun, Focus } from 'lucide-react';
 
+const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
+
 function App() {
   const {
     data, viewData, filename, format, screen, parsing,
@@ -15,6 +17,7 @@ function App() {
     setFocus, viewAll, changeFocus, clear,
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
+  const agentVisible = AI_ENABLED && agentOpen;
   const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const treeRef = useRef<FamilyTreeRef>(null);
 
@@ -108,15 +111,17 @@ function App() {
               <User className="h-4 w-4" />
             </Button>
           )}
-          <Button
-            variant={agentOpen ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setAgentOpen(o => !o)}
-            className="flex items-center gap-1.5"
-          >
-            <Bot className="h-4 w-4" />
-            <span className="hidden sm:inline">Ask AI</span>
-          </Button>
+          {AI_ENABLED && (
+            <Button
+              variant={agentOpen ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAgentOpen(o => !o)}
+              className="flex items-center gap-1.5"
+            >
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Ask AI</span>
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={clear} className="hidden sm:flex">
             Load Different
           </Button>
@@ -140,7 +145,7 @@ function App() {
         </div>
 
         {/* Backdrop for mobile panels */}
-        {(selectedPerson || agentOpen) && (
+        {(selectedPerson || agentVisible) && (
           <div
             className="md:hidden fixed inset-0 bg-black/50 z-40"
             onClick={() => {
@@ -166,7 +171,7 @@ function App() {
         )}
 
         {/* Agent panel - full screen on mobile */}
-        {agentOpen && (
+        {agentVisible && (
           <div className="fixed md:relative inset-0 md:inset-auto
             w-full md:w-96 z-50 md:z-auto bg-background">
             <AgentPanel onClose={() => setAgentOpen(false)} />
