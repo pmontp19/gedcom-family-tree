@@ -1,0 +1,4 @@
+name = "gedcom-family-tree"
+
+[assets]
+directory = "./dist"
