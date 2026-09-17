@@ -13,6 +13,20 @@ export function buildTree(tokens: Token[]): TreeNode[] {
   const stack: TreeNode[] = [];
 
   for (const token of tokens) {
+    // Handle CONT and CONC: merge into parent data, don't create child nodes
+    if (token.tag === 'CONT' || token.tag === 'CONC') {
+      if (stack.length > 0) {
+        const parent = stack[stack.length - 1];
+        const fragment = token.data || '';
+        if (token.tag === 'CONC') {
+          parent.data = (parent.data || '') + fragment;
+        } else {
+          parent.data = (parent.data || '') + '\n' + fragment;
+        }
+      }
+      continue;
+    }
+
     const node: TreeNode = {
       ...token,
       children: [],
@@ -24,14 +38,11 @@ export function buildTree(tokens: Token[]): TreeNode[] {
     }
 
     if (stack.length === 0) {
-      // This is a root node
       roots.push(node);
     } else {
-      // Add as child of current parent
       stack[stack.length - 1].children.push(node);
     }
 
-    // Push node to stack (may have children)
     stack.push(node);
   }
 

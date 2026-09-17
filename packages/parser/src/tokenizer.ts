@@ -5,47 +5,32 @@ export interface Token {
   data?: string;
 }
 
-const POINTER_REGEX = /^@(\w+)@$/;
+const LINE_REGEX = /^(\d+)\s+(?:@([^@\s]+)@\s+)?(\w+)(?:\s+(.*))?$/;
 
-export function tokenize(line: string): Token {
-  const trimmed = line.trim();
-  const parts = trimmed.split(/\s+/);
-  const level = parseInt(parts[0], 10);
+export function tokenize(line: string): Token | null {
+  const match = line.match(LINE_REGEX);
+  if (!match) return null;
 
-  let index = 1;
-  let pointer: string | undefined;
-  let tag: string;
-  let data: string | undefined;
-
-  // Check if second part is a pointer
-  if (parts[index]?.startsWith('@')) {
-    const pointerMatch = parts[index].match(POINTER_REGEX);
-    if (pointerMatch) {
-      pointer = pointerMatch[1];
-      index++;
-    }
-  }
-
-  tag = parts[index] || '';
-  index++;
-
-  // Rest is data
-  if (index < parts.length) {
-    data = parts.slice(index).join(' ');
-  }
+  const level = parseInt(match[1], 10);
+  const pointer = match[2];
+  const tag = match[3];
+  const data = match[4];
 
   return { level, tag, pointer, data };
 }
 
 export function tokenizeLines(content: string): Token[] {
+  // Strip UTF-8 BOM if present
+  if (content.startsWith('\uFEFF')) {
+    content = content.slice(1);
+  }
   const lines = content.split(/\r?\n/);
   const tokens: Token[] = [];
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    // Skip empty lines and lines not starting with a level number
-    if (trimmed.length === 0 || !/^\d/.test(trimmed)) continue;
-    tokens.push(tokenize(trimmed));
+    if (line.length === 0 || !/^\d/.test(line)) continue;
+    const token = tokenize(line);
+    if (token) tokens.push(token);
   }
 
   return tokens;

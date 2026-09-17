@@ -58,7 +58,7 @@ describe('adapters', () => {
       expect(ind?.birth?.place).toBe('New York');
       expect(ind?.death?.date?.year).toBe(2020);
       expect(ind?.fams).toContain('F1');
-      expect(ind?.famc).toBe('F2');
+      expect(ind?.famc).toEqual(['F2']);
     });
 
     it('parses family with marriage', () => {
@@ -178,7 +178,7 @@ describe('adapters', () => {
       expect(ind?.fams).toHaveLength(2);
       expect(ind?.fams).toContain('F6');
       expect(ind?.fams).toContain('F12');
-      expect(ind?.famc).toBe('F7');
+      expect(ind?.famc).toEqual(['F7']);
     });
   });
 });

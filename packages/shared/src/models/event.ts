@@ -1,4 +1,4 @@
-import type { GedcomDate } from './gedcom-date';
+import type { GedcomDate } from './gedcom-date.js';
 
 export interface Event {
   type: 'BIRT' | 'DEAT' | 'MARR' | 'DIV' | 'RESI' | 'OCCU' | 'EDUC' | 'IMMI' | 'EMIG' | string;

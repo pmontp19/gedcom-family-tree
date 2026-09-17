@@ -3,17 +3,18 @@
  * Used for communication between frontend and backend
  */
 
-import type { Event } from './event';
-import type { Name } from './individual';
+import type { Event } from './event.js';
+import type { Name } from './individual.js';
 
 export interface SerializedIndividual {
   id: string;
   name?: Name;
+  aliases: Name[];
   sex?: 'M' | 'F' | 'U';
   birth?: Event;
   death?: Event;
   fams: string[];
-  famc?: string;
+  famc: string[];
   events: Event[];
   notes: string[];
 }
@@ -63,15 +64,27 @@ export function getSerializedFamily(data: SerializedGedcomData, id: string): Ser
   return data.families[id];
 }
 
-export function getSerializedParents(data: SerializedGedcomData, individualId: string): { father?: SerializedIndividual; mother?: SerializedIndividual } {
+export function getSerializedParents(data: SerializedGedcomData, individualId: string): { fathers: SerializedIndividual[]; mothers: SerializedIndividual[] } {
   const ind = getSerializedIndividual(data, individualId);
-  if (!ind?.famc) return {};
-  const fam = getSerializedFamily(data, ind.famc);
-  if (!fam) return {};
-  return {
-    father: fam.husband ? getSerializedIndividual(data, fam.husband) : undefined,
-    mother: fam.wife ? getSerializedIndividual(data, fam.wife) : undefined,
-  };
+  if (!ind?.famc?.length) return { fathers: [], mothers: [] };
+
+  const fathers: SerializedIndividual[] = [];
+  const mothers: SerializedIndividual[] = [];
+
+  for (const famcId of ind.famc) {
+    const fam = getSerializedFamily(data, famcId);
+    if (!fam) continue;
+    if (fam.husband) {
+      const father = getSerializedIndividual(data, fam.husband);
+      if (father) fathers.push(father);
+    }
+    if (fam.wife) {
+      const mother = getSerializedIndividual(data, fam.wife);
+      if (mother) mothers.push(mother);
+    }
+  }
+
+  return { fathers, mothers };
 }
 
 export function getSerializedChildren(data: SerializedGedcomData, individualId: string): SerializedIndividual[] {
@@ -112,11 +125,18 @@ export function getSerializedSpouses(data: SerializedGedcomData, individualId: s
 
 export function getSerializedSiblings(data: SerializedGedcomData, individualId: string): SerializedIndividual[] {
   const ind = getSerializedIndividual(data, individualId);
-  if (!ind?.famc) return [];
-  const fam = getSerializedFamily(data, ind.famc);
-  if (!fam) return [];
-  return fam.children
-    .filter(id => id !== individualId)
-    .map(id => getSerializedIndividual(data, id))
-    .filter((i): i is SerializedIndividual => i !== undefined);
+  if (!ind?.famc?.length) return [];
+
+  const siblings: SerializedIndividual[] = [];
+  for (const famcId of ind.famc) {
+    const fam = getSerializedFamily(data, famcId);
+    if (!fam) continue;
+    for (const childId of fam.children) {
+      if (childId !== individualId) {
+        const sibling = getSerializedIndividual(data, childId);
+        if (sibling) siblings.push(sibling);
+      }
+    }
+  }
+  return siblings;
 }

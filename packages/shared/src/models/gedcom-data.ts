@@ -1,5 +1,5 @@
-import type { Individual } from './individual';
-import type { Family } from './family';
+import type { Individual } from './individual.js';
+import type { Family } from './family.js';
 
 export interface GedcomHeader {
   source?: string;
@@ -62,17 +62,27 @@ export function getChildren(data: GedcomData, individualId: string): Individual[
   return children;
 }
 
-export function getParents(data: GedcomData, individualId: string): { father?: Individual; mother?: Individual } {
+export function getParents(data: GedcomData, individualId: string): { fathers: Individual[]; mothers: Individual[] } {
   const ind = getIndividual(data, individualId);
-  if (!ind?.famc) return {};
+  if (!ind?.famc?.length) return { fathers: [], mothers: [] };
 
-  const fam = getFamily(data, ind.famc);
-  if (!fam) return {};
+  const fathers: Individual[] = [];
+  const mothers: Individual[] = [];
 
-  return {
-    father: fam.husband ? getIndividual(data, fam.husband) : undefined,
-    mother: fam.wife ? getIndividual(data, fam.wife) : undefined,
-  };
+  for (const famcId of ind.famc) {
+    const fam = getFamily(data, famcId);
+    if (!fam) continue;
+    if (fam.husband) {
+      const father = getIndividual(data, fam.husband);
+      if (father) fathers.push(father);
+    }
+    if (fam.wife) {
+      const mother = getIndividual(data, fam.wife);
+      if (mother) mothers.push(mother);
+    }
+  }
+
+  return { fathers, mothers };
 }
 
 export function getSpouses(data: GedcomData, individualId: string): Individual[] {

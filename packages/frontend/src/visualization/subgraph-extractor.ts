@@ -50,17 +50,20 @@ export function extractSubgraph(
   function walkUp(id: string, gen: number) {
     if (gen > maxGenerations) return;
     const ind = data.individuals.get(id);
-    if (!ind?.famc) return;
-    const fam = data.families.get(ind.famc);
-    if (!fam) return;
-    addFamily(ind.famc);
-    if (fam.husband) {
-      addWithSpouses(fam.husband);
-      walkUp(fam.husband, gen + 1);
-    }
-    if (fam.wife) {
-      addWithSpouses(fam.wife);
-      walkUp(fam.wife, gen + 1);
+    if (!ind?.famc?.length) return;
+
+    for (const famcId of ind.famc) {
+      const fam = data.families.get(famcId);
+      if (!fam) continue;
+      addFamily(famcId);
+      if (fam.husband) {
+        addWithSpouses(fam.husband);
+        walkUp(fam.husband, gen + 1);
+      }
+      if (fam.wife) {
+        addWithSpouses(fam.wife);
+        walkUp(fam.wife, gen + 1);
+      }
     }
   }
 

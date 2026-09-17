@@ -1,4 +1,4 @@
-import type { Event } from './event';
+import type { Event } from './event.js';
 
 export interface Family {
   id: string;

@@ -1,5 +1,5 @@
 import type { TreeNode } from '../tree-builder.js';
-import type { GedcomData, Individual, Family, Event, GedcomHeader } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, GedcomHeader, Source } from '@gedcom/shared';
 import { parseName, createIndividual, createFamily } from '@gedcom/shared';
 import { parseDate } from '../utils/date-parser.js';
 
@@ -55,7 +55,11 @@ export abstract class BaseAdapter {
     switch (node.tag) {
       case 'NAME':
         if (node.data) {
-          ind.name = parseName(node.data);
+          if (!ind.name) {
+            ind.name = parseName(node.data);
+          } else {
+            ind.aliases.push(parseName(node.data));
+          }
         }
         break;
       case 'SEX':
@@ -63,9 +67,19 @@ export abstract class BaseAdapter {
         break;
       case 'BIRT':
         ind.birth = this.parseEvent(node, 'BIRT');
+        ind.events.push(this.parseEvent(node, 'BIRT'));
         break;
       case 'DEAT':
         ind.death = this.parseEvent(node, 'DEAT');
+        ind.events.push(this.parseEvent(node, 'DEAT'));
+        break;
+      case 'BAPM':
+      case 'CHR':
+      case 'BURI':
+      case 'ADOP':
+      case 'OCCU':
+      case 'RESI':
+        ind.events.push(this.parseEvent(node, node.tag));
         break;
       case 'FAMS':
         if (node.data) {
@@ -75,7 +89,8 @@ export abstract class BaseAdapter {
         break;
       case 'FAMC':
         if (node.data) {
-          ind.famc = this.extractPointer(node.data);
+          const famId = this.extractPointer(node.data);
+          if (famId) ind.famc.push(famId);
         }
         break;
       case 'RIN':
@@ -117,9 +132,11 @@ export abstract class BaseAdapter {
           break;
         case 'MARR':
           fam.marriage = this.parseEvent(child, 'MARR');
+          fam.events.push(this.parseEvent(child, 'MARR'));
           break;
         case 'DIV':
           fam.divorce = this.parseEvent(child, 'DIV');
+          fam.events.push(this.parseEvent(child, 'DIV'));
           break;
         case 'NOTE':
           if (child.data) fam.notes.push(child.data);
@@ -200,9 +217,39 @@ export abstract class BaseAdapter {
           const fam = this.parseFamily(node);
           data.families.set(fam.id, fam);
           break;
+        case 'SOUR':
+          const source = this.parseSource(node);
+          if (source) data.sources.set(source.id, source);
+          break;
       }
     }
 
     return data;
+  }
+
+  protected parseSource(node: TreeNode): Source | null {
+    const id = node.pointer;
+    if (!id) return null;
+
+    const source: Source = { id };
+
+    for (const child of node.children) {
+      switch (child.tag) {
+        case 'TITL':
+          source.title = child.data;
+          break;
+        case 'AUTH':
+          source.author = child.data;
+          break;
+        case 'PUBL':
+          source.publication = child.data;
+          break;
+        case 'TEXT':
+          source.text = child.data;
+          break;
+      }
+    }
+
+    return source;
   }
 }

@@ -1,4 +1,4 @@
-import type { Event } from './event';
+import type { Event } from './event.js';
 
 export interface Name {
   full: string;
@@ -12,11 +12,12 @@ export interface Name {
 export interface Individual {
   id: string;
   name?: Name;
+  aliases: Name[];  // Additional NAME records
   sex?: 'M' | 'F' | 'U';
   birth?: Event;
   death?: Event;
-  fams: string[];  // Family where spouse
-  famc?: string;   // Family where child
+  fams: string[];  // Families where spouse
+  famc: string[];  // Families where child (adoption, etc.)
   events: Event[];
   notes: string[];
   sources: string[];
@@ -29,9 +30,11 @@ export function createIndividual(id: string): Individual {
   return {
     id,
     fams: [],
+    famc: [],
     events: [],
     notes: [],
     sources: [],
+    aliases: [],
     customTags: new Map(),
   };
 }

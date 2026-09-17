@@ -107,9 +107,9 @@ describe('integration', () => {
     expect(f2?.children).toContain('I5');
 
     const i4 = data.individuals.get('I4');
-    expect(i4?.famc).toBe('F2');
+    expect(i4?.famc).toEqual(['F2']);
 
     const i5 = data.individuals.get('I5');
-    expect(i5?.famc).toBe('F2');
+    expect(i5?.famc).toEqual(['F2']);
   });
 });
