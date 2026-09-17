@@ -17,3 +17,9 @@ export function getMediaFilename(media: Media): string | undefined {
   // Normalize backslashes and strip leading './'
   return media.file.replace(/\\/g, '/').replace(/^\.\//, '');
 }
+
+/** FILE path of the primary photo (_PRIM Y) or the first available media. */
+export function getPrimaryMediaFile(media: Media[]): string | undefined {
+  if (media.length === 0) return undefined;
+  return (media.find(m => m.primary) ?? media[0]).file;
+}

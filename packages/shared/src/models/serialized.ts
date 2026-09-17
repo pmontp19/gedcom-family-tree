@@ -6,6 +6,13 @@
 import type { Event } from './event.js';
 import type { Name } from './individual.js';
 
+export interface SerializedMedia {
+  id: string;
+  file?: string;
+  title?: string;
+  primary?: boolean;
+}
+
 export interface SerializedIndividual {
   id: string;
   name?: Name;
@@ -17,6 +24,7 @@ export interface SerializedIndividual {
   famc: string[];
   events: Event[];
   notes: string[];
+  media: SerializedMedia[];
 }
 
 export interface SerializedFamily {
@@ -27,6 +35,8 @@ export interface SerializedFamily {
   marriage?: Event;
   divorce?: Event;
   events: Event[];
+  notes: string[];
+  media: SerializedMedia[];
 }
 
 export interface SerializedGedcomData {

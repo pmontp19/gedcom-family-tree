@@ -22,10 +22,11 @@ export abstract class BaseAdapter {
         case 'SOUR':
           header.source = child.data;
           break;
-        case 'GEDC':
+        case 'GEDC': {
           const versNode = child.children.find(c => c.tag === 'VERS');
           if (versNode) header.version = versNode.data;
           break;
+        }
         case 'CHAR':
           header.char = child.data;
           break;
@@ -313,28 +314,32 @@ export abstract class BaseAdapter {
         case 'HEAD':
           data.header = this.parseHeader(node);
           break;
-        case 'INDI':
+        case 'INDI': {
           const ind = this.parseIndividual(node);
           data.individuals.set(ind.id, ind);
           break;
-        case 'FAM':
+        }
+        case 'FAM': {
           const fam = this.parseFamily(node);
           data.families.set(fam.id, fam);
           break;
-        case 'SOUR':
+        }
+        case 'SOUR': {
           const source = this.parseSource(node);
           if (source) data.sources.set(source.id, source);
           break;
+        }
         case 'NOTE':
           // Shared NOTE record: 0 @N1@ NOTE text (CONT/CONC already merged)
           if (node.pointer) {
             data.notes.set(node.pointer, node.data || '');
           }
           break;
-        case 'OBJE':
+        case 'OBJE': {
           const media = this.parseMedia(node);
           if (media.file) data.media.set(node.pointer || media.id, media);
           break;
+        }
       }
     }
 

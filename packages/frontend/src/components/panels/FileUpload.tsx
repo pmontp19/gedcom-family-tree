@@ -7,17 +7,6 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ onFileLoad }: FileUploadProps) {
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) readFile(file);
-  }, []);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) readFile(file);
-  }, []);
-
   const readFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -26,6 +15,19 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
     };
     reader.readAsText(file, 'UTF-8');
   };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) readFile(file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) readFile(file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

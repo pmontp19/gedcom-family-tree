@@ -41,58 +41,68 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     const { runLayout } = useLayoutWorker();
 
     // Build DAG on main thread (cheap), layout on worker
+    // Adjust pending flag during render when data changes (React-approved pattern)
+    const [prevData, setPrevData] = useState(data);
+    if (prevData !== data) {
+      setPrevData(data);
+      setLayoutPending(true);
+    }
+
     useEffect(() => {
       let cancelled = false;
-      setLayoutPending(true);
-      try {
-        const rawGraph = buildDAG(data);
-        runLayout(rawGraph).then((positions: NodePosition[]) => {
-          if (cancelled) return;
-          // Apply positions back to nodes
-          const posMap = new Map(positions.map(p => [p.id, p]));
-          for (const node of rawGraph.nodes) {
-            const pos = posMap.get(node.id);
-            if (pos) { node.x = pos.x; node.y = pos.y; }
-          }
-
-          // Detect boundary individuals whose parents aren't in the subgraph
-          const hiddenFamGroups = new Map<string, string[]>();
-          for (const node of rawGraph.nodes) {
-            if (node.type !== 'individual' || !node.data) continue;
-            const famc = node.data.famc;
-            if (famc && !data.families.get(famc)) {
-              const group = hiddenFamGroups.get(famc) ?? [];
-              group.push(node.id);
-              hiddenFamGroups.set(famc, group);
+      // Defer to a microtask so setState calls are async (react-hooks/set-state-in-effect)
+      Promise.resolve().then(() => {
+        if (cancelled) return;
+        try {
+          const rawGraph = buildDAG(data);
+          return runLayout(rawGraph).then((positions: NodePosition[]) => {
+            if (cancelled) return;
+            // Apply positions back to nodes
+            const posMap = new Map(positions.map(p => [p.id, p]));
+            for (const node of rawGraph.nodes) {
+              const pos = posMap.get(node.id);
+              if (pos) { node.x = pos.x; node.y = pos.y; }
             }
-          }
-          // Insert phantom stub nodes + links
-          if (hiddenFamGroups.size > 0) {
-            const nodeById = new Map(rawGraph.nodes.map(n => [n.id, n]));
-            for (const [famId, indIds] of hiddenFamGroups) {
-              const stubId = `STUB_FAM_${famId}`;
-              const children = indIds.map(id => nodeById.get(id)).filter(Boolean);
-              const xs = children.map(c => c!.x ?? 0);
-              const midX = xs.reduce((a, b) => a + b, 0) / xs.length;
-              const minY = Math.min(...children.map(c => c!.y ?? 0));
-              rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: minY - GEN_H });
-              for (const indId of indIds) {
-                rawGraph.links.push({ source: stubId, target: indId, type: 'ancestor-stub' });
+
+            // Detect boundary individuals whose parents aren't in the subgraph
+            const hiddenFamGroups = new Map<string, string[]>();
+            for (const node of rawGraph.nodes) {
+              if (node.type !== 'individual' || !node.data) continue;
+              const famc = node.data.famc;
+              if (famc && !data.families.get(famc)) {
+                const group = hiddenFamGroups.get(famc) ?? [];
+                group.push(node.id);
+                hiddenFamGroups.set(famc, group);
               }
             }
-          }
+            // Insert phantom stub nodes + links
+            if (hiddenFamGroups.size > 0) {
+              const nodeById = new Map(rawGraph.nodes.map(n => [n.id, n]));
+              for (const [famId, indIds] of hiddenFamGroups) {
+                const stubId = `STUB_FAM_${famId}`;
+                const children = indIds.map(id => nodeById.get(id)).filter(Boolean);
+                const xs = children.map(c => c!.x ?? 0);
+                const midX = xs.reduce((a, b) => a + b, 0) / xs.length;
+                const minY = Math.min(...children.map(c => c!.y ?? 0));
+                rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: minY - GEN_H });
+                for (const indId of indIds) {
+                  rawGraph.links.push({ source: stubId, target: indId, type: 'ancestor-stub' });
+                }
+              }
+            }
 
-          setGraph(rawGraph);
+            setGraph(rawGraph);
+            setLayoutPending(false);
+          }).catch((err) => {
+            if (cancelled) return;
+            console.error('Worker layout failed:', err);
+            setLayoutPending(false);
+          });
+        } catch (e) {
+          console.error('Build DAG failed:', e);
           setLayoutPending(false);
-        }).catch((err) => {
-          if (cancelled) return;
-          console.error('Worker layout failed:', err);
-          setLayoutPending(false);
-        });
-      } catch (e) {
-        console.error('Build DAG failed:', e);
-        setLayoutPending(false);
-      }
+        }
+      });
       return () => { cancelled = true; };
     }, [data, runLayout]);
 
@@ -221,6 +231,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
           onSelect={handleNodeClick}
           detailLevel={detailLevel}
           darkMode={darkMode}
+          families={data.families}
         />
       </div>
     );

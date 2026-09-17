@@ -6,7 +6,7 @@ export { parseName, createIndividual, getDisplayName, getLifeYears } from './ind
 export type { Family } from './family';
 export { createFamily, getSpouses as getFamilySpouses } from './family';
 export type { Media } from './media';
-export { createMedia, getMediaFilename } from './media';
+export { createMedia, getMediaFilename, getPrimaryMediaFile } from './media';
 export type { GedcomData, GedcomHeader, Source } from './gedcom-data';
 export { createGedcomData, getIndividual, getFamily, getChildren, getParents, getSpouses } from './gedcom-data';
 

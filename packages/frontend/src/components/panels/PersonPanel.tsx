@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, Media } from '@gedcom/shared';
 import { getDisplayName, getLifeYears, formatDateLong } from '@gedcom/shared';
 import {
   X, MapPin, Users, Heart, Home, Briefcase, GraduationCap,
-  Plane, Baby, Skull, Church, Scale
+  Plane, Baby, Skull, Church, Scale, Images, StickyNote, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useMediaStore } from '@/hooks/useMediaStore';
 
 interface PersonPanelProps {
   individual: Individual;
@@ -21,6 +23,7 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
   const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
   const lifeYears = getLifeYears(individual);
   const genderLabel = individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : null;
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   return (
     <Card className="h-full rounded-none md:rounded-lg border-0 md:border">
@@ -53,7 +56,25 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
       <CardContent className="px-4 pb-4">
         <ScrollArea className="h-[calc(60vh-120px)] md:h-[calc(100vh-200px)]">
           <div className="space-y-4">
+            {individual.media.length > 0 && (
+              <MediaGallery media={individual.media} onOpen={setLightboxUrl} />
+            )}
+
             <EventsTimeline individual={individual} />
+
+            {individual.notes.length > 0 && (
+              <>
+                <Separator />
+                <NotesSection notes={individual.notes} />
+              </>
+            )}
+
+            {individual.sources.length > 0 && (
+              <>
+                <Separator />
+                <SourcesSection sourceIds={individual.sources} data={data} />
+              </>
+            )}
 
             {parents && (parents.husband || parents.wife) && (
               <>
@@ -88,7 +109,122 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
           </div>
         </ScrollArea>
       </CardContent>
+      {lightboxUrl && (
+        <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
     </Card>
+  );
+}
+
+// ─── Media Gallery ───────────────────────────────────────────────────────────
+
+function MediaGallery({ media, onOpen }: { media: Media[]; onOpen: (url: string) => void }) {
+  const resolve = useMediaStore((s) => s.resolve);
+
+  return (
+    <div className="space-y-2">
+      <SectionHeader icon={<Images className="h-4 w-4" />} label={`Photos (${media.length})`} />
+      <div className="grid grid-cols-3 gap-1.5">
+        {media.map((m, i) => (
+          <MediaThumb key={m.id + i} media={m} resolve={resolve} onOpen={onOpen} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MediaThumb({
+  media,
+  resolve,
+  onOpen,
+}: {
+  media: Media;
+  resolve: (file: string | undefined) => string | null;
+  onOpen: (url: string) => void;
+}) {
+  const url = resolve(media.file);
+
+  if (!url) {
+    return (
+      <div className="aspect-square rounded-md border border-dashed border-border flex items-center justify-center p-1">
+        <span className="text-[9px] text-muted-foreground text-center break-all leading-tight">
+          {media.file?.split('/').pop() ?? media.title ?? 'sense FILE'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onOpen(url)}
+      className="aspect-square rounded-md overflow-hidden border border-border hover:ring-2 hover:ring-primary/50 transition-all"
+      title={media.title ?? media.file}
+    >
+      <img src={url} alt={media.title ?? media.file ?? ''} className="w-full h-full object-cover" loading="lazy" />
+    </button>
+  );
+}
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4 cursor-zoom-out"
+      onClick={onClose}
+    >
+      <img src={url} alt="" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+      <Button variant="ghost" size="icon" className="absolute top-3 right-3 text-white hover:bg-white/20" onClick={onClose}>
+        <X className="h-5 w-5" />
+      </Button>
+    </div>
+  );
+}
+
+// ─── Notes ────────────────────────────────────────────────────────────────────
+
+function NotesSection({ notes }: { notes: string[] }) {
+  return (
+    <div className="space-y-2">
+      <SectionHeader icon={<StickyNote className="h-4 w-4" />} label={`Notes (${notes.length})`} />
+      <div className="space-y-2">
+        {notes.map((note, i) => (
+          <p key={i} className="text-xs leading-relaxed text-foreground/90 bg-muted/50 rounded-md p-2.5 whitespace-pre-wrap">
+            {note}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sources ──────────────────────────────────────────────────────────────────
+
+function SourcesSection({ sourceIds, data }: { sourceIds: string[]; data: GedcomData }) {
+  return (
+    <div className="space-y-2">
+      <SectionHeader icon={<BookOpen className="h-4 w-4" />} label={`Sources (${sourceIds.length})`} />
+      <div className="space-y-1.5">
+        {sourceIds.map((id) => {
+          const src = data.sources.get(id);
+          if (!src) {
+            return (
+              <p key={id} className="text-xs text-muted-foreground">
+                {id}
+              </p>
+            );
+          }
+          return (
+            <div key={id} className="text-xs bg-muted/50 rounded-md p-2.5">
+              {src.title && <p className="font-medium text-foreground">{src.title}</p>}
+              {src.author && <p className="text-muted-foreground">{src.author}</p>}
+              {src.publication && <p className="text-muted-foreground italic">{src.publication}</p>}
+              {!src.title && !src.author && !src.publication && (
+                <p className="text-muted-foreground">{id}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -239,6 +375,15 @@ function FamilySection({ family, individualId, data, onSelectPerson }: FamilySec
           {marriageDate && `m. ${marriageDate}`}
           {divorceDate && ` · div. ${divorceDate}`}
         </p>
+      )}
+      {family.notes.length > 0 && (
+        <div className="space-y-1.5">
+          {family.notes.map((note, i) => (
+            <p key={i} className="text-xs leading-relaxed text-foreground/90 bg-muted/50 rounded-md p-2.5 whitespace-pre-wrap">
+              {note}
+            </p>
+          ))}
+        </div>
       )}
       {family.children.length > 0 && (
         <div className="space-y-1.5">

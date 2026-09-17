@@ -64,14 +64,6 @@ describe('integration', () => {
     const content = readFileSync(SAMPLE_FILE, 'utf-8');
     const data = parseGedcom(content);
 
-    // Find family with divorce
-    let foundDivorce = false;
-    for (const fam of data.families.values()) {
-      if (fam.divorce) {
-        foundDivorce = true;
-        break;
-      }
-    }
     // Sample may or may not have divorce - just verify parsing doesn't crash
     expect(data.families.size).toBeGreaterThan(0);
   });

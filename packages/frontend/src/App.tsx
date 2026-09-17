@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTreeStore } from '@/hooks';
+import { useMediaStore } from '@/hooks/useMediaStore';
+import { collectFilesFromDataTransfer } from '@/utils/media-drop';
 import { FamilyTree, TreeControls, type FamilyTreeRef } from '@/components/tree';
 import { FileUpload, PersonPanel } from '@/components/panels';
+import { MediaSettings } from '@/components/panels/MediaSettings';
 import { FocusSelector } from '@/components/panels/FocusSelector';
 import { AgentPanel } from '@/components/panels/AgentPanel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Users, Bot, User, Moon, Sun, Focus } from 'lucide-react';
+import { FileText, Users, Bot, User, Moon, Sun, Focus, Images } from 'lucide-react';
 
 const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
 
@@ -18,8 +21,22 @@ function App() {
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
   const agentVisible = AI_ENABLED && agentOpen;
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const indexedCount = useMediaStore((s) => s.indexedCount);
+  const addMediaFiles = useMediaStore((s) => s.addFiles);
   const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const treeRef = useRef<FamilyTreeRef>(null);
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const { files, gedFiles } = await collectFilesFromDataTransfer(e.dataTransfer);
+    if (files.length > 0) addMediaFiles(files);
+    const ged = gedFiles[0];
+    if (ged) {
+      const content = await ged.text();
+      loadFile(content, ged.name);
+    }
+  };
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -94,6 +111,14 @@ function App() {
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
+          <Button variant={mediaOpen ? 'default' : 'ghost'} size="sm" onClick={() => setMediaOpen(o => !o)}
+            className="flex items-center gap-1.5 relative">
+            <Images className="h-4 w-4" />
+            {indexedCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500" />
+            )}
+          </Button>
+          {mediaOpen && <MediaSettings onClose={() => setMediaOpen(false)} />}
           <Button variant="ghost" size="sm" onClick={() => setDark(d => !d)}>
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
@@ -131,7 +156,11 @@ function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Tree view */}
-        <div className="flex-1 min-h-[50vh] md:min-h-0 relative">
+        <div
+          className="flex-1 min-h-[50vh] md:min-h-0 relative"
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+        >
           <FamilyTree
             ref={treeRef}
             data={displayData}

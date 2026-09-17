@@ -18,6 +18,7 @@ function serializeIndividual(ind: Individual) {
     famc: ind.famc,
     events: ind.events.map(e => serializeEvent(e)!),
     notes: ind.notes,
+    media: ind.media.map(m => ({ id: m.id, file: m.file, title: m.title, primary: m.primary })),
   };
 }
 
@@ -30,6 +31,8 @@ function serializeFamily(fam: Family) {
     marriage: serializeEvent(fam.marriage),
     divorce: serializeEvent(fam.divorce),
     events: fam.events.map(e => serializeEvent(e)!),
+    notes: fam.notes,
+    media: fam.media.map(m => ({ id: m.id, file: m.file, title: m.title, primary: m.primary })),
   };
 }
 

@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import type { GraphData, TreeNode as GTreeNode } from '@/visualization/dag-builder';
 import { getVisibleNodes } from '@/visualization/viewport-culler';
-import { getDisplayName, getLifeYears } from '@gedcom/shared';
+import { getDisplayName, getLifeYears, getPrimaryMediaFile } from '@gedcom/shared';
+import type { Family } from '@gedcom/shared';
+import { useMediaStore } from '@/hooks/useMediaStore';
 import type { DetailLevel } from './FamilyTree';
 
 interface PixiTreeProps {
@@ -12,6 +14,7 @@ interface PixiTreeProps {
   onSelect?: (id: string) => void;
   detailLevel: DetailLevel;
   darkMode?: boolean;
+  families?: Map<string, Family>;
 }
 
 const NODE_W = 160;
@@ -41,8 +44,9 @@ function getSexColor(sex?: 'M' | 'F' | 'U'): number {
   return sex === 'M' ? SEX_COLORS.M : sex === 'F' ? SEX_COLORS.F : SEX_COLORS.U;
 }
 
-export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, darkMode }: PixiTreeProps) {
+export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, darkMode, families }: PixiTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mediaVersion = useMediaStore((s) => s.version);
 
   // Keep latest props accessible inside effects without re-running them
   const graphRef = useRef(graph);
@@ -51,12 +55,14 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   const onSelectRef = useRef(onSelect);
   const detailLevelRef = useRef(detailLevel);
   const darkModeRef = useRef(darkMode);
-  graphRef.current = graph;
-  transformRef.current = transform;
-  selectedIdRef.current = selectedId;
-  onSelectRef.current = onSelect;
-  detailLevelRef.current = detailLevel;
-  darkModeRef.current = darkMode;
+  useEffect(() => {
+    graphRef.current = graph;
+    transformRef.current = transform;
+    selectedIdRef.current = selectedId;
+    onSelectRef.current = onSelect;
+    detailLevelRef.current = detailLevel;
+    darkModeRef.current = darkMode;
+  });
 
   // Pixi handles
   const appRef = useRef<Application | null>(null);
@@ -111,6 +117,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
       cullNodes(app, nodeContainersRef.current, graphRef.current, transformRef.current);
     }).catch(console.error);
 
+    const containers = nodeContainersRef.current;
     return () => {
       destroyed = true;
       readyRef.current = false;
@@ -120,21 +127,20 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
         appRef.current = null;
       }
       worldRef.current = null;
-      nodeContainersRef.current.clear();
+      containers.clear();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // init once
 
-  // ─── Rebuild scene when graph, detailLevel, or darkMode changes ──────────
+  // ─── Rebuild scene when graph, detailLevel, darkMode, or media sources change ──
   useEffect(() => {
     if (!readyRef.current || !appRef.current || !worldRef.current) return;
     rebuildScene(
       appRef.current, worldRef.current, nodeContainersRef.current,
-      graph, detailLevel, selectedId, onSelect, darkMode,
+      graph, detailLevel, selectedId, onSelect, darkMode, families,
     );
     applyTransform(worldRef.current, transform);
     cullNodes(appRef.current, nodeContainersRef.current, graph, transform);
-  }, [graph, detailLevel, darkMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [graph, detailLevel, darkMode, families, mediaVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Update selection highlight ───────────────────────────────────────────
   useEffect(() => {
@@ -172,16 +178,17 @@ function rebuildScene(
   selectedId: string | undefined,
   onSelect: ((id: string) => void) | undefined,
   darkMode?: boolean,
+  families?: Map<string, Family>,
 ) {
   world.removeChildren();
   nodeContainers.clear();
 
   const palette = darkMode ? DARK : LIGHT;
 
-  // Edges (single batched Graphics)
+  // Edges (single batched Graphics) + marriage year labels
   const edgeGfx = new Graphics();
   world.addChild(edgeGfx);
-  drawEdges(edgeGfx, graph, palette);
+  drawEdges(edgeGfx, world, graph, palette, families);
 
   // Nodes
   for (const node of graph.nodes) {
@@ -226,6 +233,77 @@ function cullNodes(
 
 type Palette = typeof LIGHT;
 
+// ─── Avatars (photos) ─────────────────────────────────────────────────────────
+
+const textureCache = new Map<string, Texture>();
+
+const AVATAR_R = 20;
+const AVATAR_CX = -NODE_HALF_W + 30;
+
+function getInitials(ind: { name?: { given?: string; surname?: string } }): string {
+  const g = ind.name?.given?.[0] ?? '';
+  const s = ind.name?.surname?.[0] ?? '';
+  return (g + s).toUpperCase() || '?';
+}
+
+function applyPhotoTexture(container: Container, texture: Texture, cx: number, cy: number, radius: number, placeholder?: Text) {
+  if (container.destroyed) return;
+  const sprite = new Sprite(texture);
+  sprite.anchor.set(0.5);
+  sprite.width = radius * 2;
+  sprite.height = radius * 2;
+  sprite.position.set(cx, cy);
+  const mask = new Graphics();
+  mask.circle(cx, cy, radius).fill(0xffffff);
+  container.addChild(mask);
+  container.addChild(sprite);
+  sprite.mask = mask;
+  if (placeholder) container.removeChild(placeholder);
+}
+
+function addAvatar(
+  container: Container,
+  ind: { name?: { given?: string; surname?: string } },
+  photoUrl: string | null,
+  sex: 'M' | 'F' | 'U' | undefined,
+  palette: Palette,
+) {
+  const color = getSexColor(sex);
+  // Ring + background
+  const ring = new Graphics();
+  ring.circle(AVATAR_CX, 0, AVATAR_R + 1.5)
+    .fill(palette.nodeBg)
+    .stroke({ color, width: 2 });
+  container.addChild(ring);
+
+  // Placeholder initials (kept if no photo / while loading)
+  const initials = new Text({
+    text: getInitials(ind),
+    style: new TextStyle({
+      fontSize: 14,
+      fontWeight: '700',
+      fill: palette.textSecondary,
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }),
+  });
+  initials.anchor.set(0.5);
+  initials.position.set(AVATAR_CX, 1);
+  container.addChild(initials);
+
+  if (!photoUrl) return;
+  const cached = textureCache.get(photoUrl);
+  if (cached) {
+    applyPhotoTexture(container, cached, AVATAR_CX, 0, AVATAR_R, initials);
+    return;
+  }
+  Assets.load(photoUrl)
+    .then((tex) => {
+      textureCache.set(photoUrl, tex);
+      applyPhotoTexture(container, tex, AVATAR_CX, 0, AVATAR_R, initials);
+    })
+    .catch(() => { /* keep initials placeholder */ });
+}
+
 function createNodeSprite(
   node: GTreeNode,
   detailLevel: DetailLevel,
@@ -263,20 +341,24 @@ function createNodeSprite(
     .fill(palette.nodeBg);
   container.addChild(bg);
 
-  const sidebar = new Graphics();
-  sidebar.roundRect(-NODE_HALF_W, -NODE_HALF_H, 4, NODE_H, 2).fill(color);
-  container.addChild(sidebar);
+  // Avatar with primary photo (or initials fallback)
+  const photoUrl = useMediaStore.getState().resolve(getPrimaryMediaFile(ind.media));
+  addAvatar(container, ind, photoUrl, ind.sex, palette);
 
   const nameText = new Text({
-    text: getDisplayName(ind).slice(0, 20),
+    text: getDisplayName(ind),
     style: new TextStyle({
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
       fill: palette.textPrimary,
       fontFamily: 'system-ui, -apple-system, sans-serif',
+      wordWrap: true,
+      wordWrapWidth: NODE_W - 68,
+      breakWords: true,
+      lineHeight: 13,
     }),
   });
-  nameText.position.set(-NODE_HALF_W + 12, -NODE_HALF_H + 12);
+  nameText.position.set(-NODE_HALF_W + 58, -NODE_HALF_H + 8);
   container.addChild(nameText);
 
   const years = getLifeYears(ind);
@@ -289,7 +371,7 @@ function createNodeSprite(
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }),
     });
-    yearsText.position.set(-NODE_HALF_W + 12, -NODE_HALF_H + 30);
+    yearsText.position.set(-NODE_HALF_W + 58, NODE_HALF_H - 18);
     container.addChild(yearsText);
   }
 
@@ -342,7 +424,13 @@ function updateSelection(container: Container, node: GTreeNode, selected: boolea
     .fill(palette.nodeBg);
 }
 
-function drawEdges(gfx: Graphics, graph: GraphData, palette: Palette) {
+function drawEdges(
+  gfx: Graphics,
+  world: Container,
+  graph: GraphData,
+  palette: Palette,
+  families?: Map<string, Family>,
+) {
   const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
 
   // Marriage connections
@@ -355,7 +443,7 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: Palette) {
     }
   }
 
-  for (const [, links] of familyLinks) {
+  for (const [famId, links] of familyLinks) {
     if (links.length >= 2) {
       const s1 = nodeMap.get(links[0].source);
       const s2 = nodeMap.get(links[1].source);
@@ -365,6 +453,23 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: Palette) {
         const x1 = Math.min(s1.x, s2.x) + NODE_HALF_W;
         const x2 = Math.max(s1.x, s2.x) - NODE_HALF_W;
         gfx.moveTo(x1, y).lineTo(x2, y).stroke({ color: palette.edgeMarriage, width: 2 });
+
+        // Marriage year label centered on the bar
+        const year = families?.get(famId)?.marriage?.date?.year;
+        if (year && x2 - x1 > 36) {
+          const label = new Text({
+            text: String(year),
+            style: new TextStyle({
+              fontSize: 10,
+              fontWeight: '600',
+              fill: palette.edgeMarriage,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+            }),
+          });
+          label.anchor.set(0.5);
+          label.position.set((x1 + x2) / 2, y - 8);
+          world.addChild(label);
+        }
       }
     }
   }

@@ -8,8 +8,8 @@ import { StatsGrid } from './agent/StatsGrid';
 import { RelationshipPath } from './agent/RelationshipPath';
 import { FamilyGroup } from './agent/FamilyGroup';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const { registry } = defineRegistry(catalog, {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   components: {
     PersonCard: PersonCard as any,
     AncestorList: AncestorList as any,
@@ -25,3 +25,4 @@ export const { registry } = defineRegistry(catalog, {
     },
   },
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */

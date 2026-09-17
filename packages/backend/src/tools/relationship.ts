@@ -11,9 +11,9 @@ function buildAncestorMap(data: SerializedGedcomData, id: string, maxGen = 10): 
     if (map.has(cur) || gen > maxGen) continue;
     map.set(cur, gen);
     if (gen < maxGen) {
-      const { father, mother } = getSerializedParents(data, cur);
-      if (father) queue.push({ id: father.id, gen: gen + 1 });
-      if (mother) queue.push({ id: mother.id, gen: gen + 1 });
+      const { fathers, mothers } = getSerializedParents(data, cur);
+      for (const father of fathers) queue.push({ id: father.id, gen: gen + 1 });
+      for (const mother of mothers) queue.push({ id: mother.id, gen: gen + 1 });
     }
   }
   return map;
@@ -62,9 +62,13 @@ function buildPathToAncestor(
     if (path.length > maxGen + 1 || visited.has(id)) continue;
     visited.add(id);
 
-    const { father, mother } = getSerializedParents(data, id);
-    if (father && !visited.has(father.id)) queue.push({ id: father.id, path: [...path, father] });
-    if (mother && !visited.has(mother.id)) queue.push({ id: mother.id, path: [...path, mother] });
+    const { fathers, mothers } = getSerializedParents(data, id);
+    for (const father of fathers) {
+      if (!visited.has(father.id)) queue.push({ id: father.id, path: [...path, father] });
+    }
+    for (const mother of mothers) {
+      if (!visited.has(mother.id)) queue.push({ id: mother.id, path: [...path, mother] });
+    }
   }
   return null;
 }
