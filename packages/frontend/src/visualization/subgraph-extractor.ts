@@ -12,6 +12,10 @@ export function extractSubgraph(
 ): GedcomData {
   const result = createGedcomData();
   result.header = data.header;
+  // Shared lookups are passed through by reference (sources, notes, media)
+  result.sources = data.sources;
+  result.notes = data.notes;
+  result.media = data.media;
 
   const visitedInds = new Set<string>();
   const visitedFams = new Set<string>();

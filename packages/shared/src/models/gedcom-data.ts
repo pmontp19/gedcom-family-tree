@@ -1,5 +1,6 @@
 import type { Individual } from './individual.js';
 import type { Family } from './family.js';
+import type { Media } from './media.js';
 
 export interface GedcomHeader {
   source?: string;
@@ -17,6 +18,7 @@ export interface GedcomData {
   families: Map<string, Family>;
   sources: Map<string, Source>;
   notes: Map<string, string>;
+  media: Map<string, Media>;  // top-level OBJE records; inline OBJE live on the record
 }
 
 export interface Source {
@@ -34,6 +36,7 @@ export function createGedcomData(): GedcomData {
     families: new Map(),
     sources: new Map(),
     notes: new Map(),
+    media: new Map(),
   };
 }
 

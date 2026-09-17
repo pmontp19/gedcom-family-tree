@@ -1,4 +1,5 @@
 import type { Event } from './event.js';
+import type { Media } from './media.js';
 
 export interface Name {
   full: string;
@@ -21,6 +22,7 @@ export interface Individual {
   events: Event[];
   notes: string[];
   sources: string[];
+  media: Media[];
   customTags: Map<string, string>;
   rin?: string;
   uid?: string;
@@ -34,6 +36,7 @@ export function createIndividual(id: string): Individual {
     events: [],
     notes: [],
     sources: [],
+    media: [],
     aliases: [],
     customTags: new Map(),
   };

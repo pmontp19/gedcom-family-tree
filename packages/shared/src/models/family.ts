@@ -1,4 +1,5 @@
 import type { Event } from './event.js';
+import type { Media } from './media.js';
 
 export interface Family {
   id: string;
@@ -10,6 +11,7 @@ export interface Family {
   events: Event[];
   notes: string[];
   sources: string[];
+  media: Media[];
   customTags: Map<string, string>;
 }
 
@@ -20,6 +22,7 @@ export function createFamily(id: string): Family {
     events: [],
     notes: [],
     sources: [],
+    media: [],
     customTags: new Map(),
   };
 }

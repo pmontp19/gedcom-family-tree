@@ -5,6 +5,8 @@ export type { Individual, Name } from './models/individual.js';
 export { parseName, createIndividual, getDisplayName, getLifeYears } from './models/individual.js';
 export type { Family } from './models/family.js';
 export { createFamily, getSpouses as getFamilySpouses } from './models/family.js';
+export type { Media } from './models/media.js';
+export { createMedia, getMediaFilename } from './models/media.js';
 export type { GedcomData, GedcomHeader, Source } from './models/gedcom-data.js';
 export { createGedcomData, getIndividual, getFamily, getChildren, getParents, getSpouses } from './models/gedcom-data.js';
 export * from './models/serialized.js';
