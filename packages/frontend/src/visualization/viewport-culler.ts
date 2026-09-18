@@ -1,13 +1,11 @@
 import type { TreeNode } from './dag-builder';
+import { NODE_W, NODE_H } from './theme';
 
 interface Transform {
   x: number;
   y: number;
   k: number;
 }
-
-const NODE_W = 160;
-const NODE_H = 60;
 
 /**
  * Returns the set of node IDs whose AABB intersects the viewport.

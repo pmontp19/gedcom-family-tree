@@ -17,7 +17,7 @@ interface PersonPanelProps {
 }
 
 export function PersonPanel({ individual, data, onClose, onSelectPerson }: PersonPanelProps) {
-  const parents = individual.famc ? data.families.get(individual.famc) : null;
+  const parents = individual.famc[0] ? data.families.get(individual.famc[0]) : null;
   const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
   const lifeYears = getLifeYears(individual);
   const genderLabel = individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : null;

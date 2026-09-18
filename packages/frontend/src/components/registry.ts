@@ -9,16 +9,14 @@ import { RelationshipPath } from './agent/RelationshipPath';
 import { FamilyGroup } from './agent/FamilyGroup';
 
 export const { registry } = defineRegistry(catalog, {
-  /* eslint-disable @typescript-eslint/no-explicit-any -- json-render's catalog types don't line up with the component props */
   components: {
-    PersonCard: PersonCard as any,
-    AncestorList: AncestorList as any,
-    Timeline: Timeline as any,
-    StatsGrid: StatsGrid as any,
-    RelationshipPath: RelationshipPath as any,
-    FamilyGroup: FamilyGroup as any,
+    PersonCard,
+    AncestorList,
+    Timeline,
+    StatsGrid,
+    RelationshipPath,
+    FamilyGroup,
   },
-  /* eslint-enable @typescript-eslint/no-explicit-any */
   actions: {
     navigate_to_person: async (params) => {
       const p = params as { individual_id: string; name: string };

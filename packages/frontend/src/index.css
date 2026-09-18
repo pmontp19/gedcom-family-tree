@@ -114,6 +114,41 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Piugpelat Heritage: parchment, sepia ink, crimson accents */
+.theme-heritage {
+    --background: #f3e4c2;
+    --foreground: #3a2a18;
+    --card: #f8eed6;
+    --card-foreground: #3a2a18;
+    --popover: #f8eed6;
+    --popover-foreground: #3a2a18;
+    --primary: #5a4226;
+    --primary-foreground: #f8eed6;
+    --secondary: #ecd9b4;
+    --secondary-foreground: #3a2a18;
+    --muted: #ecd9b4;
+    --muted-foreground: #7d6543;
+    --accent: #ecd9b4;
+    --accent-foreground: #3a2a18;
+    --destructive: #a33b28;
+    --border: #5a422647;
+    --input: #5a422640;
+    --ring: #6b8e4e;
+    --chart-1: #6b8e4e;
+    --chart-2: #b0402c;
+    --chart-3: #c9a84c;
+    --chart-4: #8b7d6b;
+    --chart-5: #5a4226;
+    --sidebar: #ecd9b4;
+    --sidebar-foreground: #3a2a18;
+    --sidebar-primary: #5a4226;
+    --sidebar-primary-foreground: #f8eed6;
+    --sidebar-accent: #f3e4c2;
+    --sidebar-accent-foreground: #3a2a18;
+    --sidebar-border: #5a422647;
+    --sidebar-ring: #6b8e4e;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

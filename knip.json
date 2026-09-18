@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"],
+  "workspaces": {
+    ".": {},
+    "packages/frontend": {
+      "entry": ["src/workers/*.ts", "src/components/registry.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/backend": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/parser": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/shared": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}
