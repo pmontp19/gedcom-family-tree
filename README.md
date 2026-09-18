@@ -8,7 +8,7 @@ Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree.
 
 ## Features
 
-- Parse GEDCOM 5.5.1 files (MyHeritage compatible)
+- Parse GEDCOM 5.5.1 and 7.0 files (MyHeritage compatible)
 - Interactive family tree visualization (d3-dag)
 - AI assistant for genealogy queries
 - Responsive mobile-friendly UI

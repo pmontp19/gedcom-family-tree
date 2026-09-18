@@ -1,7 +1,17 @@
+import { getDataByTag, getFirstChildByTag } from '../tree-builder.js';
 import type { TreeNode } from '../tree-builder.js';
 import type { GedcomData, Individual, Family, Event, GedcomHeader, Source } from '@gedcom/shared';
 import { parseName, createIndividual, createFamily } from '@gedcom/shared';
 import { parseDate } from '../utils/date-parser.js';
+
+/**
+ * Canonical GEDCOM version detection: HEAD.GEDC.VERS is the only authority.
+ */
+export function gedcomVersion(nodes: TreeNode[]): string | undefined {
+  const head = nodes.find(n => n.tag === 'HEAD');
+  const gedc = head && getFirstChildByTag(head, 'GEDC');
+  return gedc && getDataByTag(gedc, 'VERS');
+}
 
 export abstract class BaseAdapter {
   abstract readonly name: string;
@@ -191,7 +201,8 @@ export abstract class BaseAdapter {
 
   protected extractPointer(data: string): string | undefined {
     const match = data.match(/@(\w+)@/);
-    return match ? match[1] : undefined;
+    // @VOID@ points at no record on purpose; it is not an id.
+    return match && match[1] !== 'VOID' ? match[1] : undefined;
   }
 
   abstract detect(nodes: TreeNode[]): boolean;
