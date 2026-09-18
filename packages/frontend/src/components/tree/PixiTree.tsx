@@ -51,12 +51,15 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   const onSelectRef = useRef(onSelect);
   const detailLevelRef = useRef(detailLevel);
   const darkModeRef = useRef(darkMode);
-  graphRef.current = graph;
-  transformRef.current = transform;
-  selectedIdRef.current = selectedId;
-  onSelectRef.current = onSelect;
-  detailLevelRef.current = detailLevel;
-  darkModeRef.current = darkMode;
+  // Runs before the effects below on every render, so they always read fresh props
+  useEffect(() => {
+    graphRef.current = graph;
+    transformRef.current = transform;
+    selectedIdRef.current = selectedId;
+    onSelectRef.current = onSelect;
+    detailLevelRef.current = detailLevel;
+    darkModeRef.current = darkMode;
+  });
 
   // Pixi handles
   const appRef = useRef<Application | null>(null);
@@ -69,6 +72,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     const el = containerRef.current;
     if (!el) return;
 
+    const nodeContainers = nodeContainersRef.current;
     const app = new Application();
     appRef.current = app;
     readyRef.current = false;
@@ -120,9 +124,8 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
         appRef.current = null;
       }
       worldRef.current = null;
-      nodeContainersRef.current.clear();
+      nodeContainers.clear();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // init once
 
   // ─── Rebuild scene when graph, detailLevel, or darkMode changes ──────────

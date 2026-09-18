@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTree, type TreeNode } from '../src/tree-builder.js';
+import { buildTree } from '../src/tree-builder.js';
 import { tokenizeLines } from '../src/tokenizer.js';
 
 describe('tree-builder', () => {

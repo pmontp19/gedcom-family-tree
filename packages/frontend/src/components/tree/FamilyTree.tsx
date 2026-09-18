@@ -43,6 +43,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     // Build DAG on main thread (cheap), layout on worker
     useEffect(() => {
       let cancelled = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the spinner has to show before the worker round-trip starts
       setLayoutPending(true);
       try {
         const rawGraph = buildDAG(data);
