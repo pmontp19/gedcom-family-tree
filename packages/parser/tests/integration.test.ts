@@ -45,6 +45,16 @@ describe('integration: demo.ged', () => {
     expect(f2?.children).toEqual(['I5', 'I6']);
   });
 
+  it('keeps event tags beyond birth and death, with their places', () => {
+    const i1 = data.individuals.get('I1');
+    expect(i1?.events.find(e => e.type === 'IMMI')).toMatchObject({
+      place: 'New York, New York, USA',
+      date: { day: 3, month: 5, year: 1971 },
+    });
+    expect(data.individuals.get('I3')?.events.find(e => e.type === 'RESI')?.place).toBe('Austin, Texas, USA');
+    expect(data.families.get('F1')?.marriage?.place).toBe('Boston, Massachusetts, USA');
+  });
+
   it('links individuals to families in both directions', () => {
     const i3 = data.individuals.get('I3');
     expect(i3?.famc).toEqual(['F1']);

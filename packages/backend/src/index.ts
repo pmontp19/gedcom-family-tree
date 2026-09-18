@@ -42,6 +42,8 @@ app.post('/api/chat', async (c) => {
         'For life events chronology, render a Timeline.',
         'For family units (parents + children), render a FamilyGroup.',
         'For relationship paths between two people, render a RelationshipPath.',
+        'For an ancestor report, pedigree or Ahnentafel numbering, call generate_ancestor_report and render the items with AncestorList.',
+        'For questions about origins, where a family came from, or how it moved, call analyze_migration and render a MigrationTimeline.',
         'For questions about file quality, errors, duplicates, or GEDCOM validity, call audit_tree.',
         'Whenever you report a lint rule code, call explain_lint_rule for it and summarise the why and the remedy.',
         'Be concise in text; let the components carry the data.',

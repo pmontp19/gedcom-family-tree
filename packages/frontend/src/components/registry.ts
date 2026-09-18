@@ -7,6 +7,7 @@ import { Timeline } from './agent/Timeline';
 import { StatsGrid } from './agent/StatsGrid';
 import { RelationshipPath } from './agent/RelationshipPath';
 import { FamilyGroup } from './agent/FamilyGroup';
+import { MigrationTimeline } from './agent/MigrationTimeline';
 
 export const { registry } = defineRegistry(catalog, {
   components: {
@@ -16,6 +17,7 @@ export const { registry } = defineRegistry(catalog, {
     StatsGrid,
     RelationshipPath,
     FamilyGroup,
+    MigrationTimeline,
   },
   actions: {
     navigate_to_person: async (params) => {
