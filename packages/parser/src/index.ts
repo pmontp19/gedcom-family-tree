@@ -1,6 +1,6 @@
 import { tokenizeLines } from './tokenizer.js';
 import { buildTree } from './tree-builder.js';
-import { Gedcom551Adapter, MyHeritageAdapter } from './adapters/index.js';
+import { Gedcom551Adapter, Gedcom7Adapter, MyHeritageAdapter } from './adapters/index.js';
 import type { GedcomData } from '@gedcom/shared';
 import type { BaseAdapter } from './adapters/index.js';
 
@@ -8,10 +8,12 @@ export { tokenize, tokenizeLines } from './tokenizer.js';
 export type { Token } from './tokenizer.js';
 export { buildTree, findNodes, getFirstChildByTag, getDataByTag } from './tree-builder.js';
 export type { TreeNode } from './tree-builder.js';
-export { BaseAdapter, Gedcom551Adapter, MyHeritageAdapter } from './adapters/index.js';
+export { BaseAdapter, Gedcom551Adapter, Gedcom7Adapter, MyHeritageAdapter, gedcomVersion } from './adapters/index.js';
 export { parseDate, formatGedcomDate, MONTHS } from './utils/date-parser.js';
 
+// Version first: HEAD.GEDC.VERS decides the dialect, vendor quirks only refine it.
 const adapters: BaseAdapter[] = [
+  new Gedcom7Adapter(),
   new MyHeritageAdapter(),
   new Gedcom551Adapter(),
 ];

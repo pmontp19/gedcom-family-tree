@@ -1,7 +1,7 @@
 {
   "name": "@gedcom/parser",
   "version": "0.1.0",
-  "description": "GEDCOM 5.5.1 file parser with support for MyHeritage and other formats",
+  "description": "GEDCOM 5.5.1 and 7.0 file parser with support for MyHeritage and other formats",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

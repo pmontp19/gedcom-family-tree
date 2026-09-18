@@ -55,8 +55,8 @@ describe('integration: demo.ged', () => {
 });
 
 // Official GEDCOM 7.0 test files from https://gedcom.io/testfiles/gedcom70/
-// A dedicated 7.0 adapter lands in a later task; until then these assert that
-// the tokenizer and tree-builder handle 7.0 input without dropping lines.
+// End-to-end coverage through parseGedcom, which routes these to Gedcom7Adapter.
+// Adapter-level behaviour lives in tests/adapters/gedcom-70.test.ts.
 describe('integration: official GEDCOM 7.0 fixtures', () => {
   const FIXTURES = ['minimal70', 'same-sex-marriage', 'remarriage1', 'remarriage2', 'age', 'maximal70'];
 
@@ -81,6 +81,10 @@ describe('integration: official GEDCOM 7.0 fixtures', () => {
 
   it.each(FIXTURES)('parses %s.ged and reads the 7.0 version from the header', (name) => {
     expect(parseGedcom(readFixture70(name)).header.version).toBe('7.0');
+  });
+
+  it.each(FIXTURES)('detects %s.ged as GEDCOM 7.0', (name) => {
+    expect(detectFormat(readFixture70(name))).toBe('GEDCOM 7.0');
   });
 
   it('minimal70 has no records beyond the header and trailer', () => {
