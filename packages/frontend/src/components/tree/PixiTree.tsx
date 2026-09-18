@@ -68,6 +68,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   const appRef = useRef<Application | null>(null);
   const worldRef = useRef<Container | null>(null);
   const nodeContainersRef = useRef<Map<string, Container>>(new Map());
+  const edgeLayerRef = useRef<Container | null>(null);
   const readyRef = useRef(false);
   const [ready, setReady] = useState(false);
 
@@ -128,13 +129,13 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     if (!ready || !readyRef.current || !appRef.current || !worldRef.current) return;
     rebuildScene(
       appRef.current, worldRef.current, nodeContainersRef.current,
-      graph, detailLevel, selectedId, onSelect, darkMode, families,
+      graph, detailLevel, selectedId, onSelect, darkMode, families, edgeLayerRef,
     );
     applyTransform(worldRef.current, transform);
     cullNodes(appRef.current, nodeContainersRef.current, graph, transform);
   }, [ready, graph, detailLevel, darkMode, families, mediaVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Update selection highlight ───────────────────────────────────────────
+  // ─── Update selection highlight (node borders + edge highlight) ────────────
   useEffect(() => {
     if (!readyRef.current || !worldRef.current) return;
     const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
@@ -142,7 +143,15 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
       const node = nodeMap.get(id);
       if (node?.data) updateSelection(container, node, id === selectedId, darkMode);
     }
-  }, [selectedId, graph, darkMode]);
+    // Redraw edges so the selected person's lineage is highlighted
+    const layer = edgeLayerRef.current;
+    if (layer) {
+      layer.removeChildren().forEach(c => c.destroy({ children: true }));
+      const gfx = new Graphics();
+      layer.addChild(gfx);
+      drawEdges(gfx, layer, graph, darkMode ? DARK : LIGHT, families, selectedId);
+    }
+  }, [selectedId, graph, darkMode, families]);
 
   // ─── Apply transform + culling ────────────────────────────────────────────
   useEffect(() => {
@@ -171,16 +180,20 @@ function rebuildScene(
   onSelect: ((id: string) => void) | undefined,
   darkMode?: boolean,
   families?: Map<string, Family>,
+  edgeLayerRef?: { current: Container | null },
 ) {
   world.removeChildren();
   nodeContainers.clear();
 
   const palette = darkMode ? DARK : LIGHT;
 
-  // Edges (single batched Graphics) + marriage year labels
+  // Edges live in their own layer so selection can redraw them in isolation
+  const edgeLayer = new Container();
+  world.addChild(edgeLayer);
   const edgeGfx = new Graphics();
-  world.addChild(edgeGfx);
-  drawEdges(edgeGfx, world, graph, palette, families);
+  edgeLayer.addChild(edgeGfx);
+  drawEdges(edgeGfx, edgeLayer, graph, palette, families, selectedId);
+  if (edgeLayerRef) edgeLayerRef.current = edgeLayer;
 
   // Nodes
   for (const node of graph.nodes) {
@@ -422,8 +435,21 @@ function drawEdges(
   graph: GraphData,
   palette: Palette,
   families?: Map<string, Family>,
+  selectedId?: string,
 ) {
   const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+
+  // Families connected to the selected individual (highlighted edges)
+  const highlighted = new Set<string>();
+  if (selectedId) {
+    const sel = nodeMap.get(selectedId)?.data;
+    if (sel) {
+      for (const f of sel.fams ?? []) highlighted.add(f);
+      for (const f of sel.famc ?? []) highlighted.add(f);
+    }
+  }
+  const HL_COLOR = 0x3b82f6;
+  const HL_WIDTH = 3.5;
 
   // Marriage connections
   const familyLinks = new Map<string, typeof graph.links>();
@@ -441,27 +467,31 @@ function drawEdges(
       const s2 = nodeMap.get(links[1].source);
       if (s1?.x !== undefined && s1?.y !== undefined &&
           s2?.x !== undefined && s2?.y !== undefined) {
+        const rawFamId = famId.replace(/^FAM_/, '');
+        const isHl = highlighted.has(rawFamId);
+        const color = isHl ? HL_COLOR : palette.edgeMarriage;
+        const width = isHl ? HL_WIDTH : 2;
         const y = s1.y + NODE_HALF_H;
         const x1 = Math.min(s1.x, s2.x) + NODE_HALF_W;
         const x2 = Math.max(s1.x, s2.x) - NODE_HALF_W;
-        gfx.moveTo(x1, y).lineTo(x2, y).stroke({ color: palette.edgeMarriage, width: 2 });
+        gfx.moveTo(x1, y).lineTo(x2, y).stroke({ color, width });
 
         // Marriage year label centered on the bar
-        // link.target is the graph family node id ("FAM_<id>"); look up by raw family id
-        const year = families?.get(famId.replace(/^FAM_/, ''))?.marriage?.date?.year;
+        const year = families?.get(rawFamId)?.marriage?.date?.year;
         if (year && x2 - x1 >= 24) {
           const label = new Text({
             text: String(year),
             style: new TextStyle({
               fontSize: 9,
               fontWeight: '600',
-              fill: palette.textSecondary,
+              fill: isHl ? color : palette.textSecondary,
               fontFamily: 'system-ui, -apple-system, sans-serif',
             }),
           });
           label.anchor.set(0.5);
           const labelBg = new Graphics();
-          labelBg.roundRect(-13, -8, 26, 16, 8).fill(palette.nodeBg).stroke({ color: palette.edgeMarriage, width: 1 });
+          labelBg.roundRect(-13, -8, 26, 16, 8).fill(palette.nodeBg)
+            .stroke({ color: isHl ? HL_COLOR : palette.edgeMarriage, width: isHl ? 1.5 : 1 });
           const labelWrap = new Container();
           labelWrap.addChild(labelBg);
           labelWrap.addChild(label);
@@ -474,8 +504,9 @@ function drawEdges(
 
   // Child connections, grouped per family and drawn as a "sibling bus":
   // vertical drop from the family node, horizontal bus, drops to each child.
-  // Each family's bus sits at a slightly different height so that buses from
-  // different families never merge into one ambiguous horizontal line.
+  // Families sharing the same gap get unique, evenly spaced bus heights so
+  // their buses never merge into one ambiguous horizontal line. Junction dots
+  // mark real connections; plain line crossings carry no dot.
   const childLinksByFam = new Map<string, typeof graph.links>();
   for (const link of graph.links) {
     if (link.type !== 'child') continue;
@@ -484,40 +515,62 @@ function drawEdges(
     childLinksByFam.set(link.source, list);
   }
 
-  [...childLinksByFam.entries()].forEach(([famId, links], famIndex) => {
+  // First pass: compute geometry and group by generation gap
+  interface Bus { famId: string; links: typeof graph.links; source: GTreeNode; startY: number; endY: number; slot: number }
+  const buses: Bus[] = [];
+  const gapTotals = new Map<string, number>();
+  const gapSlots = new Map<string, number>();
+  for (const [famId, links] of childLinksByFam) {
     const source = nodeMap.get(famId);
-    if (!source || source.x === undefined || source.y === undefined) return;
-
+    if (!source || source.x === undefined || source.y === undefined) continue;
     const firstTarget = nodeMap.get(links[0].target);
-    if (!firstTarget || firstTarget.y === undefined) return;
+    if (!firstTarget || firstTarget.y === undefined) continue;
     const startY = source.y + NODE_HALF_H;
     const endY = firstTarget.y - NODE_HALF_H;
-    if (endY <= startY) return;
-    const span = endY - startY;
-    // Stable per-family stagger within the gap between the two rows
-    const busY = startY + span * (0.3 + 0.14 * (famIndex % 4));
+    if (endY <= startY) continue;
+    const gapKey = `${startY.toFixed(1)}|${endY.toFixed(1)}`;
+    gapTotals.set(gapKey, (gapTotals.get(gapKey) ?? 0) + 1);
+    buses.push({ famId, links, source, startY, endY, slot: gapSlots.size });
+    gapSlots.set(famId, buses.length - 1);
+  }
 
-    const childXs = links
+  // Second pass: draw with a per-gap slot
+  const gapSeen = new Map<string, number>();
+  for (const bus of buses) {
+    const gapKey = `${bus.startY.toFixed(1)}|${bus.endY.toFixed(1)}`;
+    const idx = gapSeen.get(gapKey) ?? 0;
+    gapSeen.set(gapKey, idx + 1);
+    const total = gapTotals.get(gapKey) ?? 1;
+    const busY = bus.startY + (bus.endY - bus.startY) * ((idx + 1) / (total + 1));
+
+    const rawFamId = bus.famId.replace(/^FAM_/, '');
+    const isHl = highlighted.has(rawFamId);
+    const color = isHl ? HL_COLOR : palette.edgeChild;
+    const width = isHl ? HL_WIDTH : 2;
+
+    const childXs = bus.links
       .map(l => nodeMap.get(l.target)?.x)
       .filter((x): x is number => x !== undefined);
-    if (childXs.length === 0) return;
-    const minX = Math.min(source.x, ...childXs);
-    const maxX = Math.max(source.x, ...childXs);
+    if (childXs.length === 0) continue;
+    const minX = Math.min(bus.source.x, ...childXs);
+    const maxX = Math.max(bus.source.x, ...childXs);
 
-    // Drop from the family node to the bus
-    gfx.moveTo(source.x, startY).lineTo(source.x, busY)
-      .stroke({ color: palette.edgeChild, width: 2 });
+    // Drop from the family node to the bus + junction dot
+    gfx.moveTo(bus.source.x, bus.startY).lineTo(bus.source.x, busY)
+      .stroke({ color, width });
+    gfx.circle(bus.source.x, busY, 3).fill(color);
     // Horizontal bus
     gfx.moveTo(minX, busY).lineTo(maxX, busY)
-      .stroke({ color: palette.edgeChild, width: 2 });
-    // Drop to each child
-    for (const link of links) {
+      .stroke({ color, width });
+    // Drop to each child + junction dot
+    for (const link of bus.links) {
       const target = nodeMap.get(link.target);
       if (!target || target.x === undefined || target.y === undefined) continue;
       gfx.moveTo(target.x, busY).lineTo(target.x, target.y - NODE_HALF_H)
-        .stroke({ color: palette.edgeChild, width: 2 });
+        .stroke({ color, width });
+      gfx.circle(target.x, busY, 3).fill(color);
     }
-  });
+  }
 
   // Ancestor stub connections
   const STUB_HALF_H = 11; // half of PILL_H (22)
