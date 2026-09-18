@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { GedcomData, Individual, Family } from '@gedcom/shared';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
+import { attachMedia } from '@/services/gedzip';
 
 function serializeEvent(ev: { type: string; date?: { year?: number; month?: number; day?: number; text?: string }; place?: string } | undefined) {
   if (!ev) return undefined;
@@ -65,6 +66,11 @@ async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
   }
 }
 
+/** Blob URLs live until revoked; a new tree or a clear ends the old one's. */
+function revokeMedia(urls: string[]) {
+  for (const url of urls) URL.revokeObjectURL(url);
+}
+
 // Parser worker singleton
 let parserWorker: Worker | null = null;
 function getParserWorker(): Worker {
@@ -116,8 +122,9 @@ interface TreeState {
   parsing: boolean;
   lintResult: GedlintResult | null;
   linting: boolean;
+  mediaUrls: string[];
 
-  loadFile: (content: string, filename: string, bytes: ArrayBuffer) => void;
+  loadFile: (content: string, filename: string, bytes: ArrayBuffer, media?: Map<string, string>) => void;
   setFocus: (id: string, generations: number) => void;
   viewAll: () => void;
   changeFocus: () => void;
@@ -140,9 +147,11 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   parsing: false,
   lintResult: null,
   linting: false,
+  mediaUrls: [],
 
-  loadFile: (content, filename, bytes) => {
-    set({ parsing: true, lintResult: null, linting: true });
+  loadFile: (content, filename, bytes, media) => {
+    revokeMedia(get().mediaUrls);
+    set({ parsing: true, lintResult: null, linting: true, mediaUrls: [...(media?.values() ?? [])] });
     // Health check runs beside the parse: the tree renders without waiting.
     runGedlint(bytes)
       .then((lintResult) => set({ lintResult, linting: false }))
@@ -151,6 +160,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         set({ linting: false });
       });
     parseOnWorker(content).then(({ data, format }) => {
+      if (media) attachMedia(data, media);
       set({
         rawData: content,
         filename,
@@ -200,17 +210,21 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   togglePersonPanel: () => set((s) => ({ personPanelOpen: !s.personPanelOpen })),
 
-  clear: () => set({
-    rawData: null,
-    filename: null,
-    format: 'Unknown',
-    data: null,
-    viewData: null,
-    focusId: null,
-    selectedId: null,
-    screen: 'upload',
-    parsing: false,
-    lintResult: null,
-    linting: false,
-  }),
+  clear: () => {
+    revokeMedia(get().mediaUrls);
+    set({
+      rawData: null,
+      filename: null,
+      format: 'Unknown',
+      data: null,
+      viewData: null,
+      focusId: null,
+      selectedId: null,
+      screen: 'upload',
+      parsing: false,
+      lintResult: null,
+      linting: false,
+      mediaUrls: [],
+    });
+  },
 }));

@@ -183,6 +183,51 @@ describe('Gedcom7Adapter', () => {
     });
   });
 
+  it('narrows SEX X and unknown values to U', () => {
+    const data = parse(fixture('maximal70'));
+
+    expect(data.individuals.get('I1')!.sex).toBe('M');
+    // I3 is `1 SEX X`: valid 7.0, but only M/F/U exist downstream.
+    expect(data.individuals.get('I3')!.sex).toBe('U');
+  });
+
+  describe('media (OBJE)', () => {
+    it('resolves 1 OBJE pointers against the top-level media records', () => {
+      const i1 = parse(fixture('maximal70')).individuals.get('I1')!;
+
+      // @O1@ carries three FILEs, @O2@ one, @VOID@ none.
+      expect(i1.media.map(m => m.file)).toEqual([
+        'media/CharlotteBront%C3%AB.jpg',
+        'file:///path/to/file1',
+        'media/original.mp3',
+        'http://host.example.com/path/to/file2',
+      ]);
+      expect(i1.media[0].form).toBe('image/jpeg');
+    });
+
+    it('takes the FILE title, falling back to the object one', () => {
+      const i1 = parse(fixture('maximal70')).individuals.get('I1')!;
+      expect(i1.media.find(m => m.file === 'media/original.mp3')?.title).toBe('Object title');
+    });
+
+    it('reads 5.5.1 objects inlined under the individual', () => {
+      const content = [
+        '0 HEAD', '1 GEDC', '2 VERS 5.5.1',
+        '0 @I1@ INDI',
+        '1 OBJE',
+        '2 FILE media/portrait.jpg',
+        '2 FORM jpeg',
+        '2 TITL Portrait',
+        '0 TRLR',
+      ].join('\n');
+      const data = new Gedcom551Adapter().parse(buildTree(tokenizeLines(content)));
+
+      expect(data.individuals.get('I1')!.media).toEqual([
+        { file: 'media/portrait.jpg', form: 'jpeg', title: 'Portrait' },
+      ]);
+    });
+  });
+
   it('parses every official 7.0 fixture without throwing', () => {
     for (const name of ['minimal70', 'maximal70', 'same-sex-marriage', 'remarriage1', 'remarriage2', 'age']) {
       expect(() => parse(fixture(name)), name).not.toThrow();

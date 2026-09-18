@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import type { Individual } from '@gedcom/shared';
-import { getDisplayName, getLifeYears } from '@gedcom/shared';
+import { getDisplayName, getLifeYears, getPhotoUrl } from '@gedcom/shared';
 import type { GraphData, TreeNode as GTreeNode } from '@/visualization/dag-builder';
 import { getVisibleNodes } from '@/visualization/viewport-culler';
 import { NODE_W, NODE_H, NODE_RADIUS, getTreeTheme, lighten } from "@/visualization/theme";
@@ -333,6 +333,35 @@ function drawCard(
     .stroke({ color: borderColor, width: selected ? 2.5 : 2, join: 'round' });
 }
 
+/**
+ * Swap the initials for the person's photo once it decodes, masked into the
+ * avatar circle. An unreadable image (revoked blob, broken link) just leaves
+ * the initials in place.
+ */
+async function addPhoto(container: Container, url: string, initials: Text) {
+  const img = new Image();
+  img.src = url;
+  try {
+    await img.decode();
+  } catch {
+    return;
+  }
+  // The scene rebuilds while images decode: drop the late arrivals.
+  if (container.destroyed || !container.parent) return;
+
+  const sprite = new Sprite(Texture.from(img));
+  sprite.anchor.set(0.5);
+  sprite.position.set(AVATAR_CX, 0);
+  // Cover the circle: scale by the short side and let the long one overflow.
+  sprite.scale.set((AVATAR_R * 2) / Math.min(img.naturalWidth, img.naturalHeight));
+  // Inside the ring, so the sex-coloured stroke stays fully visible.
+  const mask = new Graphics().circle(AVATAR_CX, 0, AVATAR_R - 1.25).fill(0xffffff);
+  sprite.mask = mask;
+
+  container.addChild(mask, sprite);
+  initials.visible = false;
+}
+
 function createNodeSprite(
   node: GTreeNode,
   detailLevel: DetailLevel,
@@ -388,6 +417,9 @@ function createNodeSprite(
   initials.anchor.set(0.5, 0.5);
   initials.position.set(AVATAR_CX, -0.5);
   container.addChild(initials);
+
+  const photoUrl = getPhotoUrl(ind);
+  if (photoUrl) void addPhoto(container, photoUrl, initials);
 
   // Name + life years, vertically centered as a block
   const nameLines = wrapName(getDisplayName(ind), NAME_MAX_W, nameStyle, 2);

@@ -1,5 +1,17 @@
 import type { Event } from './event.js';
 
+/**
+ * One OBJE FILE. `file` is the raw GEDCOM reference (a percent-encoded
+ * relative path inside a GEDZIP, or an absolute URL); `url` is filled in once
+ * something resolves that reference to a loadable address.
+ */
+export interface MediaFile {
+  file: string;
+  title?: string;
+  form?: string;
+  url?: string;
+}
+
 export interface Name {
   full: string;
   given?: string;
@@ -21,6 +33,7 @@ export interface Individual {
   events: Event[];
   notes: string[];
   sources: string[];
+  media: MediaFile[];  // OBJE: photos and documents
   customTags: Map<string, string>;
   rin?: string;
   uid?: string;
@@ -34,6 +47,7 @@ export function createIndividual(id: string): Individual {
     events: [],
     notes: [],
     sources: [],
+    media: [],
     aliases: [],
     customTags: new Map(),
   };
@@ -62,4 +76,9 @@ export function getLifeYears(ind: Individual): string {
   if (birthYear) return `b. ${birthYear}`;
   if (deathYear) return `d. ${deathYear}`;
   return '';
+}
+
+/** First media file that resolved to a loadable image: the person's photo. */
+export function getPhotoUrl(ind: Individual): string | undefined {
+  return ind.media.find(m => m.url)?.url;
 }

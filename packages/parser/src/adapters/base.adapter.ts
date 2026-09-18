@@ -1,6 +1,6 @@
 import { getDataByTag, getFirstChildByTag } from '../tree-builder.js';
 import type { TreeNode } from '../tree-builder.js';
-import type { GedcomData, Individual, Family, Event, GedcomHeader, Source } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, GedcomHeader, Source, MediaFile } from '@gedcom/shared';
 import { parseName, createIndividual, createFamily } from '@gedcom/shared';
 import { parseDate } from '../utils/date-parser.js';
 
@@ -25,8 +25,31 @@ const INDIVIDUAL_EVENT_TAGS = new Set([
   'PROB', 'PROP', 'RESI', 'RETI', 'WILL',
 ]);
 
+/**
+ * `1 FILE <ref>` with its FORM/TITL. In 7.0 those hang off the FILE; in 5.5.1
+ * they sit beside it on the OBJE, so the object-level ones are the fallback.
+ */
+function parseMediaRecord(node: TreeNode): MediaFile[] {
+  const objectTitle = getDataByTag(node, 'TITL');
+  const files: MediaFile[] = [];
+
+  for (const child of node.children) {
+    if (child.tag !== 'FILE' || !child.data) continue;
+    files.push({
+      file: child.data,
+      title: getDataByTag(child, 'TITL') ?? objectTitle,
+      form: getDataByTag(child, 'FORM') ?? getDataByTag(node, 'FORM'),
+    });
+  }
+
+  return files;
+}
+
 export abstract class BaseAdapter {
   abstract readonly name: string;
+
+  /** Top-level `0 @O1@ OBJE` records, so `1 OBJE @O1@` pointers can resolve. */
+  protected mediaRecords = new Map<string, MediaFile[]>();
 
   parseHeader(node: TreeNode): GedcomHeader {
     const header: GedcomHeader = { customTags: new Map() };
@@ -86,7 +109,10 @@ export abstract class BaseAdapter {
         }
         break;
       case 'SEX':
-        ind.sex = node.data as 'M' | 'F' | 'U';
+        // 7.0 also defines X (other). Anything past M/F is unknown here: an
+        // out-of-contract value reached the renderer as an undefined colour
+        // and took down the rest of the scene with it.
+        ind.sex = node.data === 'M' || node.data === 'F' ? node.data : 'U';
         break;
       case 'BIRT':
         ind.birth = this.parseEvent(node, 'BIRT');
@@ -114,6 +140,9 @@ export abstract class BaseAdapter {
       case '_UID':
         ind.uid = node.data;
         break;
+      case 'OBJE':
+        ind.media.push(...this.resolveMedia(node));
+        break;
       case 'NOTE':
         if (node.data) ind.notes.push(node.data);
         break;
@@ -127,6 +156,17 @@ export abstract class BaseAdapter {
           ind.customTags.set(node.tag, node.data || '');
         }
     }
+  }
+
+  /**
+   * An OBJE under a record is either a pointer at a top-level media record
+   * (7.0 and most 5.5.1 exporters) or an inline object carrying its own FILE
+   * children (5.5.1). Both end up as the same flat list of files.
+   */
+  protected resolveMedia(node: TreeNode): MediaFile[] {
+    const pointer = node.data ? this.extractPointer(node.data) : undefined;
+    if (node.data) return pointer ? this.mediaRecords.get(pointer) ?? [] : [];
+    return parseMediaRecord(node);
   }
 
   parseFamily(node: TreeNode): Family {
@@ -221,6 +261,14 @@ export abstract class BaseAdapter {
       sources: new Map(),
       notes: new Map(),
     };
+
+    // Media records first: individuals point at them and may come earlier.
+    this.mediaRecords = new Map();
+    for (const node of nodes) {
+      if (node.tag === 'OBJE' && node.pointer) {
+        this.mediaRecords.set(node.pointer, parseMediaRecord(node));
+      }
+    }
 
     for (const node of nodes) {
       switch (node.tag) {

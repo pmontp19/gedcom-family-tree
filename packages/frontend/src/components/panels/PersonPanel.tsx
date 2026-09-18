@@ -5,7 +5,7 @@ import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
 import { getDisplayName, getLifeYears, formatDateLong } from '@gedcom/shared';
 import {
   X, MapPin, Users, Heart, Home, Briefcase, GraduationCap,
-  Plane, Baby, Skull, Church, Scale
+  Plane, Baby, Skull, Church, Scale, Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -21,6 +21,8 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
   const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
   const lifeYears = getLifeYears(individual);
   const genderLabel = individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : null;
+  // Only files something resolved to a loadable URL: the rest would render broken.
+  const photos = individual.media.filter((m) => m.url);
 
   return (
     <Card className="h-full rounded-none md:rounded-lg border-0 md:border">
@@ -29,15 +31,24 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
         <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
       </div>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 px-4 pt-2 md:pt-6">
-        <div className="min-w-0">
-          <CardTitle className="text-base md:text-lg leading-tight">
-            {getDisplayName(individual)}
-          </CardTitle>
-          {(lifeYears || genderLabel) && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {[lifeYears, genderLabel].filter(Boolean).join(' · ')}
-            </p>
+        <div className="flex items-center gap-3 min-w-0">
+          {photos[0] && (
+            <img
+              src={photos[0].url}
+              alt={getDisplayName(individual)}
+              className="h-14 w-14 rounded-lg object-cover border border-border shrink-0"
+            />
           )}
+          <div className="min-w-0">
+            <CardTitle className="text-base md:text-lg leading-tight">
+              {getDisplayName(individual)}
+            </CardTitle>
+            {(lifeYears || genderLabel) && (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {[lifeYears, genderLabel].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
         </div>
         {onClose && (
           <Button
@@ -54,6 +65,24 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
         <ScrollArea className="h-[calc(60vh-120px)] md:h-[calc(100vh-200px)]">
           <div className="space-y-4">
             <EventsTimeline individual={individual} />
+
+            {photos.length > 1 && (
+              <>
+                <Separator />
+                <SectionHeader icon={<ImageIcon className="h-4 w-4" />} label="Photos" />
+                <div className="grid grid-cols-3 gap-2">
+                  {photos.map((m) => (
+                    <img
+                      key={m.url}
+                      src={m.url}
+                      alt={m.title ?? getDisplayName(individual)}
+                      title={m.title}
+                      className="aspect-square w-full rounded-md object-cover border border-border"
+                    />
+                  ))}
+                </div>
+              </>
+            )}
 
             {parents && (parents.husband || parents.wife) && (
               <>
