@@ -455,6 +455,7 @@ function createAncestorStubSprite(detailLevel: DetailLevel, palette: TreePalette
 
 interface FamilyEdgeGroup {
   famNodeId: string;
+  famNode?: GTreeNode;
   spouses: GTreeNode[];
   children: GTreeNode[];
 }
@@ -463,17 +464,20 @@ function groupFamilyEdges(graph: GraphData): FamilyEdgeGroup[] {
   const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
   const groups = new Map<string, FamilyEdgeGroup>();
 
+  const group = (famNodeId: string) =>
+    groups.get(famNodeId) ?? { famNodeId, famNode: nodeMap.get(famNodeId), spouses: [], children: [] };
+
   for (const link of graph.links) {
     if (link.type === 'marriage') {
-      const group = groups.get(link.target) ?? { famNodeId: link.target, spouses: [], children: [] };
+      const g = group(link.target);
       const spouse = nodeMap.get(link.source);
-      if (spouse) group.spouses.push(spouse);
-      groups.set(link.target, group);
+      if (spouse) g.spouses.push(spouse);
+      groups.set(link.target, g);
     } else if (link.type === 'child') {
-      const group = groups.get(link.source) ?? { famNodeId: link.source, spouses: [], children: [] };
+      const g = group(link.source);
       const child = nodeMap.get(link.target);
-      if (child) group.children.push(child);
-      groups.set(link.source, group);
+      if (child) g.children.push(child);
+      groups.set(link.source, g);
     }
   }
   return [...groups.values()];
@@ -481,14 +485,19 @@ function groupFamilyEdges(graph: GraphData): FamilyEdgeGroup[] {
 
 function drawEdges(gfx: Graphics, graph: GraphData, palette: TreePalette) {
   for (const group of groupFamilyEdges(graph)) {
-    const { spouses, children } = group;
+    const { spouses, children, famNode } = group;
     const positioned = spouses.filter(s => s.x !== undefined && s.y !== undefined);
-    if (positioned.length === 0) continue;
 
     // Marriage bar: between the two spouses, aligned with the card bottom edge
     let famX: number;
     let barY: number;
-    if (positioned.length >= 2) {
+    if (positioned.length === 0) {
+      // Family with children but no spouses: drop from the family connector node
+      if (children.length === 0 || !famNode ||
+          famNode.x === undefined || famNode.y === undefined) continue;
+      famX = famNode.x;
+      barY = famNode.y + HALF_H;
+    } else if (positioned.length >= 2) {
       const [a, b] = positioned;
       const left = (a.x ?? 0) < (b.x ?? 0) ? a : b;
       const right = left === a ? b : a;
@@ -511,11 +520,13 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: TreePalette) {
     const sorted = [...children].sort((c1, c2) => (c1.y ?? 0) - (c2.y ?? 0));
     const first = sorted[0];
     const busY = barY + ((first.y ?? 0) - HALF_H - barY) * 0.5;
+    if (busY <= barY + 4) continue; // no vertical room below the bar (degenerate layout)
 
     let hasOffsetChild = false;
     for (const child of sorted) {
       const cx = child.x ?? 0;
       const endY = (child.y ?? 0) - HALF_H;
+      if (endY <= busY) continue;
       if (Math.abs(cx - famX) < 1) {
         gfx.moveTo(famX, busY).lineTo(famX, endY)
           .stroke({ color: palette.edgeChild, width: 2.5, cap: 'round' });

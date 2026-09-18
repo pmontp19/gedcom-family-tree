@@ -34,7 +34,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
-    const [layoutPending, setLayoutPending] = useState(false);
+    const [layoutPending, setLayoutPending] = useState(true);
     const zoomBehaviorRef = useRef<ReturnType<typeof zoom<HTMLDivElement, unknown>> | null>(null);
     const { runLayout } = useLayoutWorker();
 
@@ -185,10 +185,13 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       const onWheel = (event: WheelEvent) => {
         if (event.ctrlKey || event.metaKey) return; // pinch / ctrl+scroll -> d3 zoom
         event.preventDefault();
-        const t = zoomTransform(container);
+        // translateBy applies the translateExtent (zoom.transform would not)
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1;
+        const k = zoomTransform(container).k;
         sel.call(
-          zoomBehavior.transform,
-          zoomIdentity.translate(t.x - event.deltaX, t.y - event.deltaY).scale(t.k)
+          zoomBehavior.translateBy,
+          -event.deltaX * unit / k,
+          -event.deltaY * unit / k
         );
       };
       container.addEventListener('wheel', onWheel, { passive: false });

@@ -13,8 +13,12 @@ import type { ThemeId } from '@/visualization/theme';
 const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
 
 function getInitialTheme(): ThemeId {
-  const stored = localStorage.getItem('theme');
-  if (stored === 'light' || stored === 'dark' || stored === 'heritage') return stored;
+  try {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark' || stored === 'heritage') return stored;
+  } catch (err) {
+    console.warn('Theme preference unavailable:', err);
+  }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -32,7 +36,11 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('theme-heritage', theme === 'heritage');
-    localStorage.setItem('theme', theme);
+    try {
+      localStorage.setItem('theme', theme);
+    } catch (err) {
+      console.warn('Could not persist theme:', err);
+    }
   }, [theme]);
 
   const selectedPerson = selectedId && viewData ? viewData.individuals.get(selectedId) : null;
