@@ -454,9 +454,18 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     });
   }
 
-  // Resolve collisions for secondary spouses: if they overlap with existing nodes, push them apart
-  const minSpacing = NODE_W + 30;
-  for (let pass = 0; pass < 4; pass++) {
+  // Resolve row collisions keeping couples rigid: spouses linked by a
+  // marriage form one block, so no node can be wedged between a couple
+  // (e.g. Ramon Ossó landing between Jaume Montpeó and Pilar Montfort).
+  const coupleOf = new Map<string, string>();
+  for (const fam of graph.families.values()) {
+    if (fam.husband && fam.wife) {
+      coupleOf.set(fam.husband, fam.wife);
+      coupleOf.set(fam.wife, fam.husband);
+    }
+  }
+  const BLOCK_GAP = 30;
+  for (let pass = 0; pass < 6; pass++) {
     const byY = new Map<number, TreeNode[]>();
     for (const node of graph.nodes) {
       if (node.type === 'individual' && node.x !== undefined && node.y !== undefined) {
@@ -469,15 +478,34 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     let anyCollision = false;
     for (const nodes of byY.values()) {
       nodes.sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
-      for (let i = 1; i < nodes.length; i++) {
-        const left = nodes[i - 1], right = nodes[i];
-        const gap = (right.x ?? 0) - (left.x ?? 0);
-        if (gap < minSpacing) {
-          const shift = minSpacing - gap;
-          if (right.x !== undefined) {
-            right.x += shift;
-            anyCollision = true;
-          }
+      // Group the row into rigid blocks (couples move together)
+      const blocks: TreeNode[][] = [];
+      const assigned = new Set<string>();
+      for (const n of nodes) {
+        if (assigned.has(n.id)) continue;
+        const spId = coupleOf.get(n.id);
+        const sp = spId ? nodes.find(o => o.id === spId) : undefined;
+        if (sp && !assigned.has(sp.id)) {
+          const [left, right] = (n.x ?? 0) <= (sp.x ?? 0) ? [n, sp] : [sp, n];
+          blocks.push([left, right]);
+          assigned.add(left.id);
+          assigned.add(right.id);
+        } else {
+          blocks.push([n]);
+          assigned.add(n.id);
+        }
+      }
+      blocks.sort((a, b) => (a[0].x ?? 0) - (b[0].x ?? 0));
+      for (let i = 1; i < blocks.length; i++) {
+        const prev = blocks[i - 1];
+        const cur = blocks[i];
+        const prevMax = Math.max(...prev.map(n => n.x ?? 0)) + NODE_W / 2;
+        const curMin = Math.min(...cur.map(n => n.x ?? 0)) - NODE_W / 2;
+        const gap = curMin - prevMax;
+        if (gap < BLOCK_GAP) {
+          const shift = BLOCK_GAP - gap;
+          for (const n of cur) n.x = (n.x ?? 0) + shift;
+          anyCollision = true;
         }
       }
     }
