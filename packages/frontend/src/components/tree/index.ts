@@ -1,3 +1,2 @@
-export { FamilyTree, type FamilyTreeRef, type DetailLevel } from './FamilyTree';
-export { PixiTree } from './PixiTree';
+export { FamilyTree, type FamilyTreeRef } from './FamilyTree';
 export { TreeControls } from './TreeControls';

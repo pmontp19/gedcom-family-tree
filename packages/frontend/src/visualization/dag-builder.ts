@@ -1,5 +1,6 @@
 import type { GedcomData, Individual, Family } from '@gedcom/shared';
 import { hierarchy, tree } from 'd3-hierarchy';
+import { NODE_W, COUPLE_GAP } from './theme';
 
 export interface TreeNode {
   id: string;
@@ -11,7 +12,7 @@ export interface TreeNode {
   y?: number;
 }
 
-export interface TreeLink {
+interface TreeLink {
   source: string;
   target: string;
   type: 'marriage' | 'child' | 'ancestor-stub';
@@ -48,10 +49,8 @@ export function buildDAG(data: GedcomData): GraphData {
   return { nodes, links, families };
 }
 
-// Layout constants matching TreeNode component
-const NODE_W = 160;
-const COUPLE_GAP = 10;   // gap between spouses
-export const GEN_H = 140;       // vertical center-to-center distance
+// Layout constants (node metrics live in ./theme)
+export const GEN_H = 170;       // vertical center-to-center distance
 
 /** A node in the layout tree. Either a family unit or a standalone individual. */
 interface FamilyUnit {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseGedcom, detectFormat } from '../src/index.js';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -8,9 +8,11 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Real MyHeritage export with personal data - gitignored, may not be present in CI
 const SAMPLE_FILE = join(__dirname, '../../../sample/7696g9_4137009er067u53agctb59_A.ged');
+const HAS_SAMPLE = existsSync(SAMPLE_FILE);
 
-describe('integration', () => {
+describe.skipIf(!HAS_SAMPLE)('integration', () => {
   it('parses full sample file', () => {
     const content = readFileSync(SAMPLE_FILE, 'utf-8');
     const data = parseGedcom(content);
@@ -65,12 +67,8 @@ describe('integration', () => {
     const data = parseGedcom(content);
 
     // Find family with divorce
-    let foundDivorce = false;
     for (const fam of data.families.values()) {
-      if (fam.divorce) {
-        foundDivorce = true;
-        break;
-      }
+      if (fam.divorce) break;
     }
     // Sample may or may not have divorce - just verify parsing doesn't crash
     expect(data.families.size).toBeGreaterThan(0);

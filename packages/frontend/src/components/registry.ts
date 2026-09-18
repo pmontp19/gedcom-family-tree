@@ -9,14 +9,13 @@ import { RelationshipPath } from './agent/RelationshipPath';
 import { FamilyGroup } from './agent/FamilyGroup';
 
 export const { registry } = defineRegistry(catalog, {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   components: {
-    PersonCard: PersonCard as any,
-    AncestorList: AncestorList as any,
-    Timeline: Timeline as any,
-    StatsGrid: StatsGrid as any,
-    RelationshipPath: RelationshipPath as any,
-    FamilyGroup: FamilyGroup as any,
+    PersonCard,
+    AncestorList,
+    Timeline,
+    StatsGrid,
+    RelationshipPath,
+    FamilyGroup,
   },
   actions: {
     navigate_to_person: async (params) => {

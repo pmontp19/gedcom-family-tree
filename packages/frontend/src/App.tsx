@@ -4,11 +4,19 @@ import { FamilyTree, TreeControls, type FamilyTreeRef } from '@/components/tree'
 import { FileUpload, PersonPanel } from '@/components/panels';
 import { FocusSelector } from '@/components/panels/FocusSelector';
 import { AgentPanel } from '@/components/panels/AgentPanel';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Users, Bot, User, Moon, Sun, Focus } from 'lucide-react';
+import { FileText, Users, Bot, User, Focus } from 'lucide-react';
+import type { ThemeId } from '@/visualization/theme';
 
 const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
+
+function getInitialTheme(): ThemeId {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'light' || stored === 'dark' || stored === 'heritage') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 function App() {
   const {
@@ -18,12 +26,14 @@ function App() {
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
   const agentVisible = AI_ENABLED && agentOpen;
-  const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [theme, setTheme] = useState<ThemeId>(getInitialTheme);
   const treeRef = useRef<FamilyTreeRef>(null);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-  }, [dark]);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle('theme-heritage', theme === 'heritage');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const selectedPerson = selectedId && viewData ? viewData.individuals.get(selectedId) : null;
 
@@ -33,9 +43,7 @@ function App() {
       <div className="h-screen w-screen p-8">
         <div className="max-w-md mx-auto">
           <div className="flex justify-end mb-2">
-            <Button variant="ghost" size="sm" onClick={() => setDark(d => !d)}>
-              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <ThemeToggle theme={theme} onThemeChange={setTheme} />
           </div>
           <h1 className="text-2xl font-bold text-center mb-2">Family Tree</h1>
           <p className="text-center text-muted-foreground mb-8">
@@ -62,9 +70,7 @@ function App() {
           <Button variant="ghost" size="sm" onClick={clear}>
             &larr; Back
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setDark(d => !d)}>
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <ThemeToggle theme={theme} onThemeChange={setTheme} />
         </div>
         <FocusSelector data={data} onSelect={setFocus} onViewAll={viewAll} />
       </div>
@@ -94,9 +100,7 @@ function App() {
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => setDark(d => !d)}>
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <ThemeToggle theme={theme} onThemeChange={setTheme} />
           <Button variant="outline" size="sm" onClick={changeFocus} className="flex items-center gap-1.5">
             <Focus className="h-4 w-4" />
             <span className="hidden sm:inline">Change Focus</span>
@@ -137,7 +141,7 @@ function App() {
             data={displayData}
             selectedId={selectedId ?? undefined}
             onSelect={(ind) => selectPerson(ind.id)}
-            darkMode={dark}
+            themeId={theme}
           />
 
           {/* Controls overlay */}

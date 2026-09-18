@@ -1,6 +1,6 @@
 import type { Individual, Family } from '@gedcom/shared';
 
-export interface SerializableTreeNode {
+interface SerializableTreeNode {
   id: string;
   data: Individual | null;
   type: 'individual' | 'family';
@@ -9,7 +9,7 @@ export interface SerializableTreeNode {
   y?: number;
 }
 
-export interface SerializableTreeLink {
+interface SerializableTreeLink {
   source: string;
   target: string;
   type: 'marriage' | 'child' | 'ancestor-stub';
