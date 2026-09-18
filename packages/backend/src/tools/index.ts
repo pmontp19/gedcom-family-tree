@@ -4,14 +4,16 @@ import { searchTools } from './search.js';
 import { statisticsTools } from './statistics.js';
 import { relationshipTools } from './relationship.js';
 import { factsTools } from './facts.js';
+import { auditTools } from './audit.js';
 import type { ToolSet } from 'ai';
 
-export function createGedcomTools(data: SerializedGedcomData): ToolSet {
+export function createGedcomTools(data: SerializedGedcomData, raw: Buffer | null): ToolSet {
   return {
     ...traversalTools(data),
     ...searchTools(data),
     ...statisticsTools(data),
     ...relationshipTools(data),
     ...factsTools(data),
+    ...auditTools(raw),
   } as ToolSet;
 }

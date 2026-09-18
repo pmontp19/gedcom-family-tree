@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTreeStore } from '@/hooks';
 import { FamilyTree, TreeControls, type FamilyTreeRef } from '@/components/tree';
-import { FileUpload, PersonPanel } from '@/components/panels';
+import { FileUpload, PersonPanel, TreeHealth } from '@/components/panels';
 import { FocusSelector } from '@/components/panels/FocusSelector';
 import { AgentPanel } from '@/components/panels/AgentPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -108,6 +108,7 @@ function App() {
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
+          <TreeHealth />
           <ThemeToggle theme={theme} onThemeChange={setTheme} />
           <Button variant="outline" size="sm" onClick={changeFocus} className="flex items-center gap-1.5">
             <Focus className="h-4 w-4" />
