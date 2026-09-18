@@ -20,7 +20,12 @@ interface PersonPanelProps {
 
 export function PersonPanel({ individual, data, onClose, onSelectPerson }: PersonPanelProps) {
   const parents = individual.famc ? data.families.get(individual.famc) : null;
-  const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
+  const spouseFamilies = individual.fams
+    .map(id => data.families.get(id))
+    .filter(Boolean)
+    .sort((a, b) =>
+      (a!.marriage?.date?.year ?? -Infinity) - (b!.marriage?.date?.year ?? -Infinity)
+    ) as Family[];
   const lifeYears = getLifeYears(individual);
   const genderLabel = individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : null;
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);

@@ -336,35 +336,93 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     }
   }
 
-  // Position unpositioned spouses next to their positioned partners in the same family
-  // (fixes case where secondary marriages are ignored by the layout tree)
-  for (const [famNodeId, spouseIds] of spousesOf) {
-    if (spouseIds.length < 2) continue;
-    const positioned = spouseIds.filter(id => nodeById.get(id)?.x !== undefined);
-    const unpositioned = spouseIds.filter(id => nodeById.get(id)?.x === undefined);
-    if (positioned.length > 0 && unpositioned.length > 0) {
-      const referenceSpouse = nodeById.get(positioned[0]);
-      if (!referenceSpouse || referenceSpouse.x === undefined || referenceSpouse.y === undefined) continue;
-      const refY = referenceSpouse.y;
-      let nextX = referenceSpouse.x + NODE_W / 2 + COUPLE_GAP;
-      for (const id of unpositioned) {
-        const n = nodeById.get(id);
-        if (n) {
-          n.x = nextX;
-          n.y = refY;
-          nextX += NODE_W + COUPLE_GAP;
-        }
-      }
-      // Reposition family node as midpoint of all spouses
-      const famNode = nodeById.get(famNodeId);
-      if (famNode) {
-        const allXs = spouseIds.map(id => nodeById.get(id)?.x).filter((x): x is number => x !== undefined);
-        if (allXs.length > 0) {
-          famNode.x = allXs.reduce((a, b) => a + b, 0) / allXs.length;
-          famNode.y = refY;
-        }
+  // ── Multi-marriage chaining (family-chart style) ──────────────────────────
+  // A person married N times appears once; their spouses chain to one side,
+  // ordered by marriage date (undated first, GEDCOM order preserved). Each
+  // family's node sits between the person and that spouse, so children drop
+  // from the correct couple and every marriage bar stays visible.
+  const famSortKey = (famId: string): number => {
+    const d = graph.families.get(`FAM_${famId}`)?.marriage?.date;
+    if (!d || d.year === undefined) return -Infinity;
+    return d.year * 10000 + (d.month ?? 0) * 100 + (d.day ?? 0);
+  };
+
+  const famsOfPerson = new Map<string, string[]>();
+  for (const fam of graph.families.values()) {
+    for (const sp of [fam.husband, fam.wife]) {
+      if (!sp) continue;
+      const list = famsOfPerson.get(sp) || [];
+      if (!list.includes(fam.id)) list.push(fam.id);
+      famsOfPerson.set(sp, list);
+    }
+  }
+
+  const COUPLE_STEP = NODE_W + COUPLE_GAP;
+
+  for (const [indiId, famIds] of famsOfPerson) {
+    const p = nodeById.get(indiId);
+    if (!p || p.x === undefined || p.y === undefined) continue;
+    const px = p.x;
+    const py = p.y;
+
+    const sorted = [...famIds].sort((a, b) =>
+      famSortKey(a) - famSortKey(b) || famIds.indexOf(a) - famIds.indexOf(b));
+
+    // Chain side: opposite to the first already-positioned spouse
+    let side = 1;
+    for (const famId of sorted) {
+      const fam = graph.families.get(`FAM_${famId}`);
+      if (!fam) continue;
+      const spId = fam.husband === indiId ? fam.wife : fam.husband;
+      const sp = spId ? nodeById.get(spId) : undefined;
+      if (sp?.x !== undefined) {
+        side = (sp.x - px) > 0 ? -1 : 1;
+        break;
       }
     }
+
+    let chainX = px + side * COUPLE_STEP;
+    for (const famId of sorted) {
+      const fam = graph.families.get(`FAM_${famId}`);
+      const famNode = nodeById.get(`FAM_${famId}`);
+      if (!fam || !famNode) continue;
+      const spId = fam.husband === indiId ? fam.wife : fam.husband;
+      const sp = spId ? nodeById.get(spId) : undefined;
+
+      if (sp?.x !== undefined) {
+        // Positioned spouse (the one p was laid out with): anchor between them
+        famNode.x = (px + sp.x) / 2;
+        famNode.y = py;
+        continue;
+      }
+      // Chain unpositioned spouses on the chosen side
+      if (sp) {
+        sp.x = chainX;
+        sp.y = py;
+        famNode.x = (px + chainX) / 2;
+      } else {
+        famNode.x = px;
+      }
+      famNode.y = py;
+      chainX += side * COUPLE_STEP;
+    }
+  }
+
+  // Place unpositioned children under their positioned family node
+  // (children of secondary marriages are not part of the unit tree)
+  for (const [famNodeId, fam] of graph.families) {
+    const famNode = nodeById.get(famNodeId);
+    if (!famNode || famNode.x === undefined || famNode.y === undefined) continue;
+    const baseX = famNode.x;
+    const baseY = famNode.y;
+    const unplaced = fam.children
+      .map(id => nodeById.get(id))
+      .filter((n): n is TreeNode => !!n && n.x === undefined);
+    if (unplaced.length === 0) continue;
+    unplaced.forEach((child, i) => {
+      child.x = baseX + (i - (unplaced.length - 1) / 2) * (NODE_W + 30);
+      child.y = baseY + GEN_H;
+    });
   }
 
   // Resolve collisions for secondary spouses: if they overlap with existing nodes, push them apart
