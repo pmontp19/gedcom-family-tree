@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GedcomData, Individual, Family } from '@gedcom/shared';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
+import { runGedlint, type GedlintResult } from '@/services/gedlint';
 
 function serializeEvent(ev: { type: string; date?: { year?: number; month?: number; day?: number; text?: string }; place?: string } | undefined) {
   if (!ev) return undefined;
@@ -33,7 +34,17 @@ function serializeFamily(fam: Family) {
   };
 }
 
-async function uploadToServer(data: GedcomData) {
+/** btoa() only takes a string, and spreading a whole file blows the call stack. */
+function toBase64(bytes: ArrayBuffer): string {
+  const view = new Uint8Array(bytes);
+  let binary = '';
+  for (let i = 0; i < view.length; i += 0x8000) {
+    binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
   try {
     const payload = {
       individuals: Object.fromEntries(
@@ -42,6 +53,7 @@ async function uploadToServer(data: GedcomData) {
       families: Object.fromEntries(
         Array.from(data.families.entries()).map(([id, fam]) => [id, serializeFamily(fam)])
       ),
+      raw: toBase64(bytes),
     };
     await fetch('http://localhost:3001/api/upload', {
       method: 'POST',
@@ -102,8 +114,10 @@ interface TreeState {
   selectedId: string | null;
   personPanelOpen: boolean;
   parsing: boolean;
+  lintResult: GedlintResult | null;
+  linting: boolean;
 
-  loadFile: (content: string, filename: string) => void;
+  loadFile: (content: string, filename: string, bytes: ArrayBuffer) => void;
   setFocus: (id: string, generations: number) => void;
   viewAll: () => void;
   changeFocus: () => void;
@@ -124,9 +138,18 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   selectedId: null,
   personPanelOpen: false,
   parsing: false,
+  lintResult: null,
+  linting: false,
 
-  loadFile: (content, filename) => {
-    set({ parsing: true });
+  loadFile: (content, filename, bytes) => {
+    set({ parsing: true, lintResult: null, linting: true });
+    // Health check runs beside the parse: the tree renders without waiting.
+    runGedlint(bytes)
+      .then((lintResult) => set({ lintResult, linting: false }))
+      .catch((error) => {
+        console.warn('gedlint unavailable:', error);
+        set({ linting: false });
+      });
     parseOnWorker(content).then(({ data, format }) => {
       set({
         rawData: content,
@@ -139,7 +162,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         screen: 'focus-select',
         parsing: false,
       });
-      void uploadToServer(data);
+      void uploadToServer(data, bytes);
     }).catch((error) => {
       console.error('Failed to parse GEDCOM:', error);
       set({ parsing: false });
@@ -187,5 +210,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     selectedId: null,
     screen: 'upload',
     parsing: false,
+    lintResult: null,
+    linting: false,
   }),
 }));

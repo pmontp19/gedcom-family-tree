@@ -15,8 +15,9 @@ const app = new Hono();
 app.use('*', cors({ origin: 'http://localhost:5173' }));
 
 app.post('/api/upload', async (c) => {
-  const data = await c.req.json() as SerializedGedcomData;
-  gedcomStore.set(data);
+  // `raw` is the base64 of the original file bytes, kept for the gedlint audit.
+  const { raw, ...data } = await c.req.json() as SerializedGedcomData & { raw?: string };
+  gedcomStore.set(data, raw ? Buffer.from(raw, 'base64') : null);
   const indCount = Object.keys(data.individuals).length;
   const famCount = Object.keys(data.families).length;
   console.log(`[gedcom] loaded ${indCount} individuals, ${famCount} families`);
@@ -26,7 +27,7 @@ app.post('/api/upload', async (c) => {
 app.post('/api/chat', async (c) => {
   const { messages } = await c.req.json() as { messages: unknown[] };
   const data = gedcomStore.get();
-  const tools = data ? createGedcomTools(data) : undefined;
+  const tools = data ? createGedcomTools(data, gedcomStore.getRaw()) : undefined;
 
   const result = streamText({
     model: anthropic('claude-opus-4-6'),
@@ -41,6 +42,8 @@ app.post('/api/chat', async (c) => {
         'For life events chronology, render a Timeline.',
         'For family units (parents + children), render a FamilyGroup.',
         'For relationship paths between two people, render a RelationshipPath.',
+        'For questions about file quality, errors, duplicates, or GEDCOM validity, call audit_tree.',
+        'Whenever you report a lint rule code, call explain_lint_rule for it and summarise the why and the remedy.',
         'Be concise in text; let the components carry the data.',
       ],
     }),

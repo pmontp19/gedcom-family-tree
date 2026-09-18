@@ -3,17 +3,19 @@ import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FileUploadProps {
-  onFileLoad: (content: string, filename: string) => void;
+  onFileLoad: (content: string, filename: string, bytes: ArrayBuffer) => void;
 }
 
 export function FileUpload({ onFileLoad }: FileUploadProps) {
   const readFile = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const content = e.target?.result as string;
-      onFileLoad(content, file.name);
+      // Read bytes, not text: gedlint's encoding rules only fire on the
+      // original bytes, and decoding first would silently repair them.
+      const bytes = e.target?.result as ArrayBuffer;
+      onFileLoad(new TextDecoder('utf-8').decode(bytes), file.name, bytes);
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
   }, [onFileLoad]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
