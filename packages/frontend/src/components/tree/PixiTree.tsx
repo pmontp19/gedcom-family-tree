@@ -472,25 +472,52 @@ function drawEdges(
     }
   }
 
-  // Child connections
+  // Child connections, grouped per family and drawn as a "sibling bus":
+  // vertical drop from the family node, horizontal bus, drops to each child.
+  // Each family's bus sits at a slightly different height so that buses from
+  // different families never merge into one ambiguous horizontal line.
+  const childLinksByFam = new Map<string, typeof graph.links>();
   for (const link of graph.links) {
     if (link.type !== 'child') continue;
-    const source = nodeMap.get(link.source);
-    const target = nodeMap.get(link.target);
-    if (!source || !target ||
-        source.x === undefined || source.y === undefined ||
-        target.x === undefined || target.y === undefined) continue;
-
-    const startY = source.y + NODE_HALF_H;
-    const endY = target.y - NODE_HALF_H;
-    const midY = startY + (endY - startY) * 0.5;
-
-    gfx.moveTo(source.x, startY)
-       .lineTo(source.x, midY)
-       .lineTo(target.x, midY)
-       .lineTo(target.x, endY)
-       .stroke({ color: palette.edgeChild, width: 2 });
+    const list = childLinksByFam.get(link.source) || [];
+    list.push(link);
+    childLinksByFam.set(link.source, list);
   }
+
+  [...childLinksByFam.entries()].forEach(([famId, links], famIndex) => {
+    const source = nodeMap.get(famId);
+    if (!source || source.x === undefined || source.y === undefined) return;
+
+    const firstTarget = nodeMap.get(links[0].target);
+    if (!firstTarget || firstTarget.y === undefined) return;
+    const startY = source.y + NODE_HALF_H;
+    const endY = firstTarget.y - NODE_HALF_H;
+    if (endY <= startY) return;
+    const span = endY - startY;
+    // Stable per-family stagger within the gap between the two rows
+    const busY = startY + span * (0.3 + 0.14 * (famIndex % 4));
+
+    const childXs = links
+      .map(l => nodeMap.get(l.target)?.x)
+      .filter((x): x is number => x !== undefined);
+    if (childXs.length === 0) return;
+    const minX = Math.min(source.x, ...childXs);
+    const maxX = Math.max(source.x, ...childXs);
+
+    // Drop from the family node to the bus
+    gfx.moveTo(source.x, startY).lineTo(source.x, busY)
+      .stroke({ color: palette.edgeChild, width: 2 });
+    // Horizontal bus
+    gfx.moveTo(minX, busY).lineTo(maxX, busY)
+      .stroke({ color: palette.edgeChild, width: 2 });
+    // Drop to each child
+    for (const link of links) {
+      const target = nodeMap.get(link.target);
+      if (!target || target.x === undefined || target.y === undefined) continue;
+      gfx.moveTo(target.x, busY).lineTo(target.x, target.y - NODE_HALF_H)
+        .stroke({ color: palette.edgeChild, width: 2 });
+    }
+  });
 
   // Ancestor stub connections
   const STUB_HALF_H = 11; // half of PILL_H (22)
