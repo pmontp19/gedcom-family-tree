@@ -10,6 +10,8 @@ interface AncestorItem {
   sex: 'M' | 'F' | 'U' | null;
   generation: number;
   relation: string;
+  /** Ahnentafel number: subject 1, father 2k, mother 2k+1. Absent on plain ancestor lists. */
+  ahnentafel?: number | null;
 }
 
 interface AncestorListProps {
@@ -36,12 +38,15 @@ export function AncestorList({ props }: AncestorListProps) {
             <p className="text-xs font-medium text-muted-foreground mb-1">Generation {gen}</p>
             <div className="space-y-1">
               {people.map(p => (
-                <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                  <div>
-                    <span className="font-medium">{p.name}</span>
-                    <Badge variant="outline" className="ml-2 text-xs">{p.relation}</Badge>
+                <div key={p.ahnentafel ?? p.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    {p.ahnentafel != null && (
+                      <span className="shrink-0 min-w-7 text-right tabular-nums text-xs text-muted-foreground">#{p.ahnentafel}</span>
+                    )}
+                    <span className="font-medium truncate">{p.name}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">{p.relation}</Badge>
                   </div>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs shrink-0 tabular-nums pl-2">
                     {p.birth_year && p.death_year
                       ? `${p.birth_year}–${p.death_year}`
                       : p.birth_year ? `b. ${p.birth_year}` : ''}

@@ -69,8 +69,10 @@ export function factsTools(data: SerializedGedcomData) {
           });
         }
 
-        // Other events
+        // Other events. BIRT/DEAT also live on `events`, but they are pushed
+        // from `ind.birth`/`ind.death` above; adding them again duplicates rows.
         for (const ev of ind.events) {
+          if (ev.type === 'BIRT' || ev.type === 'DEAT') continue;
           events.push({
             type: EVENT_LABELS[ev.type] ?? ev.type,
             year: ev.date?.year ?? null,

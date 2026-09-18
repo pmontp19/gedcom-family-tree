@@ -22,9 +22,11 @@ export const catalog = defineCatalog(schema, {
         items: z.array(personRef.extend({
           generation: z.number(),
           relation: z.string(),
+          // Ahnentafel number from generate_ancestor_report; absent for plain ancestor lists.
+          ahnentafel: z.number().nullable().optional(),
         })),
       }),
-      description: 'Table of ancestors grouped by generation',
+      description: 'Table of ancestors grouped by generation, showing Ahnentafel numbers when known',
     },
     Timeline: {
       props: z.object({
@@ -37,6 +39,18 @@ export const catalog = defineCatalog(schema, {
         })),
       }),
       description: 'Chronological life events for a person',
+    },
+    MigrationTimeline: {
+      props: z.object({
+        rootName: z.string(),
+        steps: z.array(z.object({
+          year: z.number().nullable(),
+          place: z.string(),
+          personName: z.string(),
+          event: z.string(),
+        })),
+      }),
+      description: 'Timeline of geographic migration across family generations',
     },
     StatsGrid: {
       props: z.object({

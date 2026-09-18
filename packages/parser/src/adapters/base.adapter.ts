@@ -13,6 +13,18 @@ export function gedcomVersion(nodes: TreeNode[]): string | undefined {
   return gedc && getDataByTag(gedc, 'VERS');
 }
 
+/**
+ * Individual-level event tags kept on `Individual.events`. BIRT and DEAT have
+ * their own fields and are handled apart; everything here used to be dropped,
+ * which silently emptied migration and event-type queries for IMMI, EMIG,
+ * CENS and friends.
+ */
+const INDIVIDUAL_EVENT_TAGS = new Set([
+  'ADOP', 'BAPM', 'BARM', 'BASM', 'BLES', 'BURI', 'CENS', 'CHR', 'CHRA', 'CONF', 'CREM',
+  'EDUC', 'EMIG', 'EVEN', 'FCOM', 'GRAD', 'IMMI', 'MILI', 'NATU', 'ORDN', 'OCCU',
+  'PROB', 'PROP', 'RESI', 'RETI', 'WILL',
+]);
+
 export abstract class BaseAdapter {
   abstract readonly name: string;
 
@@ -84,14 +96,6 @@ export abstract class BaseAdapter {
         ind.death = this.parseEvent(node, 'DEAT');
         ind.events.push(this.parseEvent(node, 'DEAT'));
         break;
-      case 'BAPM':
-      case 'CHR':
-      case 'BURI':
-      case 'ADOP':
-      case 'OCCU':
-      case 'RESI':
-        ind.events.push(this.parseEvent(node, node.tag));
-        break;
       case 'FAMS':
         if (node.data) {
           const famId = this.extractPointer(node.data);
@@ -117,7 +121,9 @@ export abstract class BaseAdapter {
         if (node.data) ind.sources.push(this.extractPointer(node.data) || node.data);
         break;
       default:
-        if (node.tag?.startsWith('_')) {
+        if (INDIVIDUAL_EVENT_TAGS.has(node.tag)) {
+          ind.events.push(this.parseEvent(node, node.tag));
+        } else if (node.tag?.startsWith('_')) {
           ind.customTags.set(node.tag, node.data || '');
         }
     }

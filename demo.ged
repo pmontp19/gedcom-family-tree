@@ -12,8 +12,13 @@
 1 SEX M
 1 BIRT
 2 DATE 1 JAN 1950
+2 PLAC Liverpool, England
+1 IMMI
+2 DATE 3 MAY 1971
+2 PLAC New York, New York, USA
 1 DEAT
 2 DATE 1 JAN 2020
+2 PLAC Boston, Massachusetts, USA
 1 FAMS @F1@
 0 @I2@ INDI
 1 NAME Mary /Johnson/
@@ -22,6 +27,7 @@
 1 SEX F
 1 BIRT
 2 DATE 15 MAR 1952
+2 PLAC Cork, Ireland
 1 FAMS @F1@
 0 @I3@ INDI
 1 NAME Robert /Smith/
@@ -30,6 +36,10 @@
 1 SEX M
 1 BIRT
 2 DATE 20 JUN 1975
+2 PLAC Boston, Massachusetts, USA
+1 RESI
+2 DATE 1 SEP 1998
+2 PLAC Austin, Texas, USA
 1 FAMS @F2@
 1 FAMC @F1@
 0 @I4@ INDI
@@ -39,6 +49,7 @@
 1 SEX F
 1 BIRT
 2 DATE 10 AUG 1978
+2 PLAC Austin, Texas, USA
 1 FAMS @F2@
 0 @I5@ INDI
 1 NAME Emily /Smith/
@@ -47,6 +58,7 @@
 1 SEX F
 1 BIRT
 2 DATE 5 APR 2005
+2 PLAC Austin, Texas, USA
 1 FAMC @F2@
 0 @I6@ INDI
 1 NAME Michael /Smith/
@@ -55,18 +67,21 @@
 1 SEX M
 1 BIRT
 2 DATE 12 NOV 2008
+2 PLAC Austin, Texas, USA
 1 FAMC @F2@
 0 @F1@ FAM
 1 HUSB @I1@
 1 WIFE @I2@
 1 MARR
 2 DATE 12 JUN 1972
+2 PLAC Boston, Massachusetts, USA
 1 CHIL @I3@
 0 @F2@ FAM
 1 HUSB @I3@
 1 WIFE @I4@
 1 MARR
 2 DATE 8 SEP 2001
+2 PLAC Austin, Texas, USA
 1 CHIL @I5@
 1 CHIL @I6@
 0 TRLR
