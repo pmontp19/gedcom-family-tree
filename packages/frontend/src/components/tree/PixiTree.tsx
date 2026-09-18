@@ -515,23 +515,26 @@ function drawEdges(
     childLinksByFam.set(link.source, list);
   }
 
-  // First pass: compute geometry and group by generation gap
-  interface Bus { famId: string; links: typeof graph.links; source: GTreeNode; startY: number; endY: number; slot: number }
+  // First pass: compute geometry and group by generation gap.
+  // NOTE: some child links point to individuals outside the visible subgraph
+  // (e.g. siblings not included by the focus extraction); those links must be
+  // skipped without discarding the whole family's bus.
+  interface Bus { famId: string; links: typeof graph.links; source: GTreeNode; startY: number; endY: number }
   const buses: Bus[] = [];
   const gapTotals = new Map<string, number>();
-  const gapSlots = new Map<string, number>();
   for (const [famId, links] of childLinksByFam) {
     const source = nodeMap.get(famId);
     if (!source || source.x === undefined || source.y === undefined) continue;
-    const firstTarget = nodeMap.get(links[0].target);
+    const firstTarget = links
+      .map(l => nodeMap.get(l.target))
+      .find(t => t && t.x !== undefined && t.y !== undefined);
     if (!firstTarget || firstTarget.y === undefined) continue;
     const startY = source.y + NODE_HALF_H;
     const endY = firstTarget.y - NODE_HALF_H;
     if (endY <= startY) continue;
     const gapKey = `${startY.toFixed(1)}|${endY.toFixed(1)}`;
     gapTotals.set(gapKey, (gapTotals.get(gapKey) ?? 0) + 1);
-    buses.push({ famId, links, source, startY, endY, slot: gapSlots.size });
-    gapSlots.set(famId, buses.length - 1);
+    buses.push({ famId, links, source, startY, endY });
   }
 
   // Second pass: draw with a per-gap slot
