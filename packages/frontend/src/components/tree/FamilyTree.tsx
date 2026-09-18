@@ -94,6 +94,9 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
 
             setGraph(rawGraph);
             setLayoutPending(false);
+            if (import.meta.env.DEV) {
+              (window as unknown as { __graph: unknown }).__graph = rawGraph;
+            }
           }).catch((err) => {
             if (cancelled) return;
             console.error('Worker layout failed:', err);

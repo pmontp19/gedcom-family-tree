@@ -408,10 +408,39 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     }
   }
 
-  // Place unpositioned children under their positioned family node
+  // ── Re-anchor distant in-law families ─────────────────────────────────────
+  // A family laid out as a separate root (e.g. the spouse's parents) can end
+  // up on the opposite side of the canvas from its children, drawing a huge
+  // bus across unrelated nodes. When ALL positioned children of a family are
+  // far from its anchor, move the couple directly above the first child.
+  for (const [, fam] of graph.families) {
+    const famNode = nodeById.get(`FAM_${fam.id}`);
+    if (!famNode || famNode.x === undefined || famNode.y === undefined) continue;
+    const spouses = [fam.husband, fam.wife]
+      .map(id => (id ? nodeById.get(id) : undefined))
+      .filter((n): n is TreeNode => !!n && n.x !== undefined && n.y !== undefined);
+    if (spouses.length === 0) continue;
+    const kids = fam.children
+      .map(id => nodeById.get(id))
+      .filter((n): n is TreeNode => !!n && n.x !== undefined && n.y !== undefined);
+    if (kids.length === 0) continue;
+    const dists = kids.map(k => Math.abs((k.x ?? 0) - famNode.x));
+    if (Math.min(...dists) <= NODE_W * 1.5) continue;
+    const kid = kids[0];
+    const row = (kid.y ?? 0) - GEN_H;
+    const cx = kid.x ?? 0;
+    spouses.forEach((s, i) => {
+      s.x = cx + (i - (spouses.length - 1) / 2) * COUPLE_STEP;
+      s.y = row;
+    });
+    famNode.x = cx;
+    famNode.y = row;
+  }
+
+  // Place unpositioned children under their (re-anchored) family node
   // (children of secondary marriages are not part of the unit tree)
-  for (const [famNodeId, fam] of graph.families) {
-    const famNode = nodeById.get(famNodeId);
+  for (const [, fam] of graph.families) {
+    const famNode = nodeById.get(`FAM_${fam.id}`);
     if (!famNode || famNode.x === undefined || famNode.y === undefined) continue;
     const baseX = famNode.x;
     const baseY = famNode.y;
