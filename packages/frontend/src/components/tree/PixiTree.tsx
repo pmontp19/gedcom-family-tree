@@ -104,7 +104,6 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     if (!el) return;
     const nodeContainers = nodeContainersRef.current;
 
-    const nodeContainers = nodeContainersRef.current;
     const app = new Application();
     appRef.current = app;
     readyRef.current = false;

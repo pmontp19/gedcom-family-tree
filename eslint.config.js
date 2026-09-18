@@ -20,11 +20,4 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
-  {
-    // Vendored shadcn/ui primitives keep their standard exports (e.g. buttonVariants)
-    files: ['**/components/ui/**/*.{ts,tsx}'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
-    },
-  },
 ])
