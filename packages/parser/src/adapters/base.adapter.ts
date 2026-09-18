@@ -14,10 +14,11 @@ export abstract class BaseAdapter {
         case 'SOUR':
           header.source = child.data;
           break;
-        case 'GEDC':
+        case 'GEDC': {
           const versNode = child.children.find(c => c.tag === 'VERS');
           if (versNode) header.version = versNode.data;
           break;
+        }
         case 'CHAR':
           header.char = child.data;
           break;
@@ -209,18 +210,21 @@ export abstract class BaseAdapter {
         case 'HEAD':
           data.header = this.parseHeader(node);
           break;
-        case 'INDI':
+        case 'INDI': {
           const ind = this.parseIndividual(node);
           data.individuals.set(ind.id, ind);
           break;
-        case 'FAM':
+        }
+        case 'FAM': {
           const fam = this.parseFamily(node);
           data.families.set(fam.id, fam);
           break;
-        case 'SOUR':
+        }
+        case 'SOUR': {
           const source = this.parseSource(node);
           if (source) data.sources.set(source.id, source);
           break;
+        }
       }
     }
 
