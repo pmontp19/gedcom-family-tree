@@ -94,5 +94,20 @@ export function extractSubgraph(
   walkUp(focusId, 1);
   walkDown(focusId, 1);
 
+  // Also walk up from the spouses' families (in-laws) so their parents appear
+  // in the tree instead of dangling as unexplained ancestor stubs.
+  const focus = data.individuals.get(focusId);
+  const spouseIds = new Set<string>();
+  for (const famId of focus?.fams ?? []) {
+    const fam = data.families.get(famId);
+    if (!fam) continue;
+    if (fam.husband && fam.husband !== focusId) spouseIds.add(fam.husband);
+    if (fam.wife && fam.wife !== focusId) spouseIds.add(fam.wife);
+  }
+  for (const spouseId of spouseIds) {
+    addWithSpouses(spouseId);
+    walkUp(spouseId, 1);
+  }
+
   return result;
 }

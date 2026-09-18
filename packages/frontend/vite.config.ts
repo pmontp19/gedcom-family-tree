@@ -12,5 +12,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      // Serve the genealogy repo (actes/ media, .ged files) during development
+      '/media': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/media/, ''),
+      },
+    },
   },
 })

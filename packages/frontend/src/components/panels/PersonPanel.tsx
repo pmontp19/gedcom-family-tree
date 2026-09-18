@@ -243,6 +243,8 @@ const EVENT_LABELS: Record<string, string> = {
   BIRT: 'Birth', DEAT: 'Death', MARR: 'Marriage', DIV: 'Divorce',
   RESI: 'Residence', OCCU: 'Occupation', EDUC: 'Education',
   IMMI: 'Immigration', EMIG: 'Emigration',
+  BAPM: 'Baptism', CHR: 'Christening', BURI: 'Burial',
+  ADOP: 'Adoption', CENS: 'Census', NATU: 'Naturalization',
 };
 
 function eventIcon(type: string) {

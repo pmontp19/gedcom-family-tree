@@ -65,14 +65,15 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
             }
 
             // Detect boundary individuals whose parents aren't in the subgraph
+            // (famc is an array of family ids; create one stub per missing family)
             const hiddenFamGroups = new Map<string, string[]>();
             for (const node of rawGraph.nodes) {
               if (node.type !== 'individual' || !node.data) continue;
-              const famc = node.data.famc;
-              if (famc && !data.families.get(famc)) {
-                const group = hiddenFamGroups.get(famc) ?? [];
+              for (const famcId of node.data.famc ?? []) {
+                if (data.families.get(famcId)) continue;
+                const group = hiddenFamGroups.get(famcId) ?? [];
                 group.push(node.id);
-                hiddenFamGroups.set(famc, group);
+                hiddenFamGroups.set(famcId, group);
               }
             }
             // Insert phantom stub nodes + links

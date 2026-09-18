@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import type { GraphData, TreeNode as GTreeNode } from '@/visualization/dag-builder';
 import { getVisibleNodes } from '@/visualization/viewport-culler';
@@ -69,6 +69,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   const worldRef = useRef<Container | null>(null);
   const nodeContainersRef = useRef<Map<string, Container>>(new Map());
   const readyRef = useRef(false);
+  const [ready, setReady] = useState(false);
 
   // ─── Init PixiJS once ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -104,17 +105,8 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
       app.stage.addChild(world);
       worldRef.current = world;
       readyRef.current = true;
-
-      // Build initial scene
-      rebuildScene(
-        app, world, nodeContainersRef.current,
-        graphRef.current, detailLevelRef.current,
-        selectedIdRef.current, onSelectRef.current, darkModeRef.current,
-      );
-
-      // Apply initial transform
-      applyTransform(world, transformRef.current);
-      cullNodes(app, nodeContainersRef.current, graphRef.current, transformRef.current);
+      // Trigger the scene-building effect with all current props
+      setReady(true);
     }).catch(console.error);
 
     const containers = nodeContainersRef.current;
@@ -131,16 +123,16 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     };
   }, []); // init once
 
-  // ─── Rebuild scene when graph, detailLevel, darkMode, or media sources change ──
+  // ─── Rebuild scene when ready, graph, detailLevel, darkMode, or media sources change ──
   useEffect(() => {
-    if (!readyRef.current || !appRef.current || !worldRef.current) return;
+    if (!ready || !readyRef.current || !appRef.current || !worldRef.current) return;
     rebuildScene(
       appRef.current, worldRef.current, nodeContainersRef.current,
       graph, detailLevel, selectedId, onSelect, darkMode, families,
     );
     applyTransform(worldRef.current, transform);
     cullNodes(appRef.current, nodeContainersRef.current, graph, transform);
-  }, [graph, detailLevel, darkMode, families, mediaVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, graph, detailLevel, darkMode, families, mediaVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Update selection highlight ───────────────────────────────────────────
   useEffect(() => {
@@ -455,20 +447,26 @@ function drawEdges(
         gfx.moveTo(x1, y).lineTo(x2, y).stroke({ color: palette.edgeMarriage, width: 2 });
 
         // Marriage year label centered on the bar
-        const year = families?.get(famId)?.marriage?.date?.year;
-        if (year && x2 - x1 > 36) {
+        // link.target is the graph family node id ("FAM_<id>"); look up by raw family id
+        const year = families?.get(famId.replace(/^FAM_/, ''))?.marriage?.date?.year;
+        if (year && x2 - x1 >= 24) {
           const label = new Text({
             text: String(year),
             style: new TextStyle({
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: '600',
-              fill: palette.edgeMarriage,
+              fill: palette.textSecondary,
               fontFamily: 'system-ui, -apple-system, sans-serif',
             }),
           });
           label.anchor.set(0.5);
-          label.position.set((x1 + x2) / 2, y - 8);
-          world.addChild(label);
+          const labelBg = new Graphics();
+          labelBg.roundRect(-13, -8, 26, 16, 8).fill(palette.nodeBg).stroke({ color: palette.edgeMarriage, width: 1 });
+          const labelWrap = new Container();
+          labelWrap.addChild(labelBg);
+          labelWrap.addChild(label);
+          labelWrap.position.set((x1 + x2) / 2, y);
+          world.addChild(labelWrap);
         }
       }
     }

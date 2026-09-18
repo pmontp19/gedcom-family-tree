@@ -50,7 +50,7 @@ export function buildDAG(data: GedcomData): GraphData {
 
 // Layout constants matching TreeNode component
 const NODE_W = 160;
-const COUPLE_GAP = 10;   // gap between spouses
+const COUPLE_GAP = 26;   // gap between spouses (wide enough for the marriage year label)
 export const GEN_H = 140;       // vertical center-to-center distance
 
 /** A node in the layout tree. Either a family unit or a standalone individual. */
