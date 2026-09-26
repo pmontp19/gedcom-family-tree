@@ -7,7 +7,8 @@ import { AgentPanel } from '@/components/panels/AgentPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Users, Bot, User, Focus } from 'lucide-react';
+import { FileText, Users, Bot, User, Focus, Network, Map as MapIcon } from 'lucide-react';
+import { FamilyMap } from '@/components/map/FamilyMap';
 import type { ThemeId } from '@/visualization/theme';
 
 const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
@@ -31,6 +32,7 @@ function App() {
   const [agentOpen, setAgentOpen] = useState(false);
   const agentVisible = AI_ENABLED && agentOpen;
   const [theme, setTheme] = useState<ThemeId>(getInitialTheme);
+  const [view, setView] = useState<'tree' | 'map'>('tree');
   const treeRef = useRef<FamilyTreeRef>(null);
 
   useEffect(() => {
@@ -108,6 +110,32 @@ function App() {
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
+          <div className="flex rounded-md border p-0.5" role="group" aria-label="View">
+            <Button
+              variant={view === 'tree' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setView('tree')}
+              className="h-7 px-2 flex items-center gap-1.5"
+              aria-pressed={view === 'tree'}
+              aria-label="Tree"
+              title="Tree view"
+            >
+              <Network className="h-4 w-4" />
+              <span className="hidden sm:inline">Tree</span>
+            </Button>
+            <Button
+              variant={view === 'map' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setView('map')}
+              className="h-7 px-2 flex items-center gap-1.5"
+              aria-pressed={view === 'map'}
+              aria-label="Map"
+              title="Map view"
+            >
+              <MapIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Map</span>
+            </Button>
+          </div>
           <TreeHealth />
           <ThemeToggle theme={theme} onThemeChange={setTheme} />
           <Button variant="outline" size="sm" onClick={changeFocus} className="flex items-center gap-1.5">
@@ -145,16 +173,26 @@ function App() {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Tree view */}
         <div className="flex-1 min-h-[50vh] md:min-h-0 relative">
-          <FamilyTree
-            ref={treeRef}
-            data={displayData}
-            selectedId={selectedId ?? undefined}
-            onSelect={(ind) => selectPerson(ind.id)}
-            themeId={theme}
-          />
+          {view === 'map' ? (
+            <FamilyMap
+              data={displayData}
+              selectedId={selectedId ?? undefined}
+              onSelect={selectPerson}
+            />
+          ) : (
+            <>
+              <FamilyTree
+                ref={treeRef}
+                data={displayData}
+                selectedId={selectedId ?? undefined}
+                onSelect={(ind) => selectPerson(ind.id)}
+                themeId={theme}
+              />
 
-          {/* Controls overlay */}
-          <TreeControls onFit={() => treeRef.current?.resetView()} />
+              {/* Controls overlay */}
+              <TreeControls onFit={() => treeRef.current?.resetView()} />
+            </>
+          )}
         </div>
 
         {/* Backdrop for mobile panels */}

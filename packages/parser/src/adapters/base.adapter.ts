@@ -1,6 +1,6 @@
 import { getDataByTag, getFirstChildByTag } from '../tree-builder.js';
 import type { TreeNode } from '../tree-builder.js';
-import type { GedcomData, Individual, Family, Event, GedcomHeader, Source, MediaFile } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, GedcomHeader, Source, MediaFile, Coordinates } from '@gedcom/shared';
 import { parseName, createIndividual, createFamily } from '@gedcom/shared';
 import { parseDate } from '../utils/date-parser.js';
 
@@ -43,6 +43,27 @@ function parseMediaRecord(node: TreeNode): MediaFile[] {
   }
 
   return files;
+}
+
+/**
+ * `N41.98` / `W2.82`: a hemisphere letter then decimal degrees. Some exporters
+ * write a bare signed number instead, which is taken as is.
+ */
+function parseDegrees(value: string | undefined, negative: 'S' | 'W'): number | undefined {
+  const match = value?.trim().match(/^([NSEW])?\s*(-?\d+(?:\.\d+)?)$/i);
+  if (!match) return undefined;
+  const degrees = parseFloat(match[2]);
+  return match[1]?.toUpperCase() === negative ? -degrees : degrees;
+}
+
+/** PLAC.MAP.LATI/LONG, the coordinates a file already carries for a place. */
+function parseMapCoords(plac: TreeNode): Coordinates | undefined {
+  const map = getFirstChildByTag(plac, 'MAP');
+  if (!map) return undefined;
+  const lat = parseDegrees(getDataByTag(map, 'LATI'), 'S');
+  const lon = parseDegrees(getDataByTag(map, 'LONG'), 'W');
+  if (lat === undefined || lon === undefined || Math.abs(lat) > 90 || Math.abs(lon) > 180) return undefined;
+  return { lat, lon };
 }
 
 export abstract class BaseAdapter {
@@ -219,9 +240,12 @@ export abstract class BaseAdapter {
         case 'DATE':
           if (child.data) event.date = parseDate(child.data);
           break;
-        case 'PLAC':
+        case 'PLAC': {
           event.place = child.data;
+          const coords = parseMapCoords(child);
+          if (coords) event.coords = coords;
           break;
+        }
         case 'NOTE':
           if (child.data) {
             event.notes = event.notes || [];

@@ -61,6 +61,32 @@ describe('adapters', () => {
       expect(ind?.famc).toEqual(['F2']);
     });
 
+    it('reads PLAC.MAP coordinates, signed by hemisphere', () => {
+      const data = adapter.parse(buildTree(tokenizeLines(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 PLAC Girona, Catalunya
+3 MAP
+4 LATI N41.9794
+4 LONG E2.8214
+1 DEAT
+2 PLAC Buenos Aires, Argentina
+3 MAP
+4 LATI S34.6037
+4 LONG W58.3816
+1 RESI
+2 PLAC Nowhere
+3 MAP
+4 LATI garbage
+4 LONG E1.0`)));
+      const ind = data.individuals.get('I1');
+      expect(ind?.birth?.coords).toEqual({ lat: 41.9794, lon: 2.8214 });
+      expect(ind?.death?.coords).toEqual({ lat: -34.6037, lon: -58.3816 });
+      expect(ind?.events.find(e => e.type === 'RESI')?.coords).toBeUndefined();
+    });
+
     it('parses family with marriage', () => {
       const tokens = tokenizeLines(`0 HEAD
 1 GEDC
