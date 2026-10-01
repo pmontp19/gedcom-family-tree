@@ -10,6 +10,7 @@ export { buildTree, findNodes, getFirstChildByTag, getDataByTag } from './tree-b
 export type { TreeNode } from './tree-builder.js';
 export { BaseAdapter, Gedcom551Adapter, Gedcom7Adapter, MyHeritageAdapter, gedcomVersion } from './adapters/index.js';
 export { parseDate, formatGedcomDate, MONTHS } from './utils/date-parser.js';
+export { decodeGedcom } from './decode.js';
 
 // Version first: HEAD.GEDC.VERS decides the dialect, vendor quirks only refine it.
 const adapters: BaseAdapter[] = [
@@ -22,33 +23,22 @@ const adapters: BaseAdapter[] = [
  * Parse a GEDCOM file content into structured data
  */
 export function parseGedcom(content: string): GedcomData {
-  const tokens = tokenizeLines(content);
-  const tree = buildTree(tokens);
+  return parseGedcomWithFormat(content).data;
+}
 
-  // Find matching adapter
-  for (const adapter of adapters) {
-    if (adapter.detect(tree)) {
-      return adapter.parse(tree);
-    }
-  }
-
-  // Default to GEDCOM 5.5.1
-  const defaultAdapter = new Gedcom551Adapter();
-  return defaultAdapter.parse(tree);
+/**
+ * Parse once and report which adapter matched ('Unknown' falls back to 5.5.1).
+ */
+export function parseGedcomWithFormat(content: string): { data: GedcomData; format: string } {
+  const tree = buildTree(tokenizeLines(content));
+  const adapter = adapters.find(a => a.detect(tree));
+  return { data: (adapter ?? new Gedcom551Adapter()).parse(tree), format: adapter?.name ?? 'Unknown' };
 }
 
 /**
  * Detect the format of a GEDCOM file
  */
 export function detectFormat(content: string): string {
-  const tokens = tokenizeLines(content);
-  const tree = buildTree(tokens);
-
-  for (const adapter of adapters) {
-    if (adapter.detect(tree)) {
-      return adapter.name;
-    }
-  }
-
-  return 'Unknown';
+  const tree = buildTree(tokenizeLines(content));
+  return adapters.find(a => a.detect(tree))?.name ?? 'Unknown';
 }

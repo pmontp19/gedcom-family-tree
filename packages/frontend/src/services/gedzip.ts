@@ -4,6 +4,7 @@
 
 import JSZip from 'jszip';
 import type { GedcomData } from '@gedcom/shared';
+import { decodeGedcom } from '@gedcom/parser';
 
 export interface GedzipContents {
   text: string;
@@ -24,12 +25,18 @@ export async function readGedzip(file: Blob): Promise<GedzipContents> {
   const bytes = await ged.async('arraybuffer');
 
   const media = new Map<string, string>();
-  for (const entry of entries) {
-    if (!IMAGE_RE.test(entry.name)) continue;
-    media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
+  try {
+    for (const entry of entries) {
+      if (!IMAGE_RE.test(entry.name)) continue;
+      media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
+    }
+  } catch (err) {
+    // The caller never gets the map, so nobody else can revoke these.
+    for (const url of media.values()) URL.revokeObjectURL(url);
+    throw err;
   }
 
-  return { text: new TextDecoder('utf-8').decode(bytes), bytes, media };
+  return { text: decodeGedcom(bytes), bytes, media };
 }
 
 function decodePath(file: string): string {

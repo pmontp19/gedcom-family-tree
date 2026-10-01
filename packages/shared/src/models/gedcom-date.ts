@@ -20,7 +20,8 @@ const MONTH_NAMES: Record<number, string> = {
 
 const QUALIFIER_LABELS: Partial<Record<NonNullable<GedcomDate['qualifier']>, string>> = {
   ABT: 'ca.', EST: 'est.', CAL: 'calc.',
-  BEF: 'before', AFT: 'after', BET: 'between'
+  BEF: 'before', AFT: 'after', BET: 'between',
+  FROM: 'from', TO: 'to'
 };
 
 export function formatDateLong(date: GedcomDate | undefined): string {
@@ -40,6 +41,9 @@ export function formatDateLong(date: GedcomDate | undefined): string {
 
   if (date.qualifier === 'BET' && date.endDate) {
     return `between ${formatPart(date)} and ${formatPart(date.endDate)}`;
+  }
+  if (date.qualifier === 'FROM' && date.endDate) {
+    return `from ${formatPart(date)} to ${formatPart(date.endDate)}`;
   }
 
   const datePart = formatPart(date);

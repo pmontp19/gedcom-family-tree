@@ -31,10 +31,10 @@
     "type": "git",
     "url": ""
   },
-  "peerDependencies": {
-    "@gedcom/shared": "workspace:*"
-  },
   "devDependencies": {
     "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "@gedcom/shared": "workspace:*"
   }
 }

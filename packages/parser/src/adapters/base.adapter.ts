@@ -114,14 +114,19 @@ export abstract class BaseAdapter {
         // and took down the rest of the scene with it.
         ind.sex = node.data === 'M' || node.data === 'F' ? node.data : 'U';
         break;
-      case 'BIRT':
-        ind.birth = this.parseEvent(node, 'BIRT');
-        ind.events.push(this.parseEvent(node, 'BIRT'));
+      // The first BIRT/DEAT is the preferred one; later ones stay in `events`.
+      case 'BIRT': {
+        const ev = this.parseEvent(node, 'BIRT');
+        ind.birth ??= ev;
+        ind.events.push(ev);
         break;
-      case 'DEAT':
-        ind.death = this.parseEvent(node, 'DEAT');
-        ind.events.push(this.parseEvent(node, 'DEAT'));
+      }
+      case 'DEAT': {
+        const ev = this.parseEvent(node, 'DEAT');
+        ind.death ??= ev;
+        ind.events.push(ev);
         break;
+      }
       case 'FAMS':
         if (node.data) {
           const famId = this.extractPointer(node.data);
@@ -246,7 +251,7 @@ export abstract class BaseAdapter {
   }
 
   protected extractPointer(data: string): string | undefined {
-    const match = data.match(/@(\w+)@/);
+    const match = data.match(/@([^@\s]+)@/);
     // @VOID@ points at no record on purpose; it is not an id.
     return match && match[1] !== 'VOID' ? match[1] : undefined;
   }
@@ -293,6 +298,7 @@ export abstract class BaseAdapter {
       }
     }
 
+    linkBothWays(data);
     return data;
   }
 
@@ -320,5 +326,29 @@ export abstract class BaseAdapter {
     }
 
     return source;
+  }
+}
+/**
+ * GEDCOM stores each link twice (FAM.HUSB/WIFE/CHIL and INDI.FAMS/FAMC), and
+ * exporters often write only one side. Fill in the missing side so traversal
+ * from either end sees the same tree.
+ */
+function linkBothWays(data: GedcomData) {
+  const add = (list: string[], id: string) => { if (!list.includes(id)) list.push(id); };
+  for (const fam of data.families.values()) {
+    for (const id of [fam.husband, fam.wife]) {
+      const ind = id && data.individuals.get(id);
+      if (ind) add(ind.fams, fam.id);
+    }
+    for (const id of fam.children) {
+      const ind = data.individuals.get(id);
+      if (ind) add(ind.famc, fam.id);
+    }
+  }
+  for (const ind of data.individuals.values()) {
+    for (const famId of ind.famc) {
+      const fam = data.families.get(famId);
+      if (fam) add(fam.children, ind.id);
+    }
   }
 }

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { readGedzip } from '@/services/gedzip';
+import { decodeGedcom } from '@gedcom/parser';
 
 interface FileUploadProps {
   onFileLoad: (
@@ -23,7 +24,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
       // Read bytes, not text: gedlint's encoding rules only fire on the
       // original bytes, and decoding first would silently repair them.
       const bytes = await file.arrayBuffer();
-      onFileLoad(new TextDecoder('utf-8').decode(bytes), file.name, bytes);
+      onFileLoad(decodeGedcom(bytes), file.name, bytes);
     } catch (err) {
       console.error('Failed to read file:', err);
       alert(`Could not read ${file.name}`);
