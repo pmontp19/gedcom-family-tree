@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
-    "dev:frontend": "pnpm --filter @gedcom/frontend dev",
-    "dev:backend": "pnpm --filter @gedcom/backend dev",
+    "dev": "pnpm build:libs && pnpm -r --parallel dev",
+    "dev:frontend": "pnpm build:libs && pnpm --filter @gedcom/frontend dev",
+    "dev:backend": "pnpm build:libs && pnpm --filter @gedcom/backend dev",
+    "build:libs": "pnpm --filter @gedcom/shared build && pnpm --filter @gedcom/parser build",
     "build": "pnpm -r build",
+    "typecheck": "pnpm build:libs && pnpm -r exec tsc --noEmit",
     "lint": "eslint packages",
     "test": "vitest",
     "test:run": "vitest run"

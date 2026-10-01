@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 sample/
+
+# Env files hold API keys
+.env
+.env.*
+!.env.example
