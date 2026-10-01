@@ -12,10 +12,12 @@ function serializeGraph(graph: GraphData): SerializableGraphData {
 
 export function useLayoutWorker() {
   const workerRef = useRef<Worker | null>(null);
-  const pendingRef = useRef<{
+  // Keyed by request id: a second layout must not take the first one's answer.
+  const pendingRef = useRef(new Map<number, {
     resolve: (positions: NodePosition[]) => void;
     reject: (err: Error) => void;
-  } | null>(null);
+  }>());
+  const seqRef = useRef(0);
 
   useEffect(() => {
     const worker = new Worker(
@@ -24,17 +26,17 @@ export function useLayoutWorker() {
     );
 
     worker.onmessage = (e: MessageEvent<LayoutResponse>) => {
-      if (e.data.type === 'layout-result' && pendingRef.current) {
-        pendingRef.current.resolve(e.data.positions);
-        pendingRef.current = null;
+      const pending = pendingRef.current.get(e.data.id);
+      if (e.data.type === 'layout-result' && pending) {
+        pendingRef.current.delete(e.data.id);
+        pending.resolve(e.data.positions);
       }
     };
 
     worker.onerror = (err) => {
-      if (pendingRef.current) {
-        pendingRef.current.reject(new Error(err.message));
-        pendingRef.current = null;
-      }
+      // An uncaught worker error carries no request id: fail everything waiting.
+      for (const pending of pendingRef.current.values()) pending.reject(new Error(err.message));
+      pendingRef.current.clear();
     };
 
     workerRef.current = worker;
@@ -47,8 +49,9 @@ export function useLayoutWorker() {
         reject(new Error('Worker not initialized'));
         return;
       }
-      pendingRef.current = { resolve, reject };
-      const msg: LayoutRequest = { type: 'layout', graph: serializeGraph(graph) };
+      const id = ++seqRef.current;
+      pendingRef.current.set(id, { resolve, reject });
+      const msg: LayoutRequest = { type: 'layout', id, graph: serializeGraph(graph) };
       workerRef.current.postMessage(msg);
     });
   }, []);

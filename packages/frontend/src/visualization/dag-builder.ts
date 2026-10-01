@@ -112,20 +112,33 @@ function layoutFamilyTree(graph: GraphData): GraphData {
   // Build family units tree
   // Each family's "layout children" are the families formed by their children.
   // Children who have no own family become standalone FamilyUnit leaves.
-  function buildFamilyUnit(famNodeId: string, visited = new Set<string>()): FamilyUnit {
+  // Someone who married more than once gets one unit for all their marriages,
+  // partners flanking them (A, P, B, C…) and every marriage's children below,
+  // so no marriage falls out of the tree.
+  // ponytail: from the 3rd marriage on, the P–C bar runs behind B.
+  function buildFamilyUnit(famNodeId: string, visited: Set<string>, preferredPivot?: string): FamilyUnit {
     if (visited.has(famNodeId)) return { famNodeId, spouseIds: [], children: [] };
     visited.add(famNodeId);
 
-    const spouseIds = spousesOf.get(famNodeId) ?? [];
-    const children = childrenOf.get(famNodeId) ?? [];
+    const spouses = spousesOf.get(famNodeId) ?? [];
+    const remarried = (id: string) => (spouseFamsOf.get(id) ?? []).some(f => f !== famNodeId && !visited.has(f));
+    const pivot = preferredPivot && remarried(preferredPivot) ? preferredPivot : spouses.find(remarried);
+
+    let famIds = [famNodeId];
+    let spouseIds = spouses;
+    if (pivot) {
+      famIds = [famNodeId, ...(spouseFamsOf.get(pivot) ?? []).filter(f => !visited.has(f))];
+      famIds.forEach(f => visited.add(f));
+      const partners = famIds.map(f => (spousesOf.get(f) ?? []).find(s => s !== pivot));
+      spouseIds = [partners[0], pivot, ...partners.slice(1)].filter((id): id is string => !!id);
+    }
 
     const layoutChildren: FamilyUnit[] = [];
-    for (const childId of children) {
+    for (const childId of famIds.flatMap(f => childrenOf.get(f) ?? [])) {
       const childFams = spouseFamsOf.get(childId) ?? [];
       if (childFams.length > 0) {
         // This child has their own family — recurse
-        const unit = buildFamilyUnit(childFams[0], visited);
-        layoutChildren.push(unit);
+        layoutChildren.push(buildFamilyUnit(childFams[0], visited, childId));
       } else {
         // Standalone child leaf
         layoutChildren.push({ indId: childId, spouseIds: [childId], children: [] });
@@ -135,8 +148,9 @@ function layoutFamilyTree(graph: GraphData): GraphData {
     return { famNodeId, spouseIds, children: layoutChildren };
   }
 
-  // Find root families (spouses with no parent family)
-  const allFamIds = [...spousesOf.keys()];
+  // Find root families (spouses with no parent family). A family with
+  // children but no recorded parents is a root too.
+  const allFamIds = graph.nodes.filter(n => n.type === 'family').map(n => n.id);
   const rootFamIds = allFamIds.filter(famId =>
     (spousesOf.get(famId) ?? []).every(s => !parentFamOf.has(s))
   );
@@ -146,7 +160,11 @@ function layoutFamilyTree(graph: GraphData): GraphData {
 
   // Build hierarchy forest — use a SINGLE visited set so each family appears in only one tree
   const globalVisited = new Set<string>();
-  const rootUnits: FamilyUnit[] = rootFamIds.map(id => buildFamilyUnit(id, globalVisited));
+  const rootUnits: FamilyUnit[] = [];
+  for (const id of rootFamIds) {
+    // A remarried root's later marriages were already folded into its first unit.
+    if (!globalVisited.has(id)) rootUnits.push(buildFamilyUnit(id, globalVisited));
+  }
 
   // Collect individuals already in rootUnits (to find truly orphaned ones)
   function collectInds(unit: FamilyUnit, set: Set<string>) {
@@ -160,7 +178,7 @@ function layoutFamilyTree(graph: GraphData): GraphData {
   // Node size: couple unit = (2*NODE_W + COUPLE_GAP), single = NODE_W
   // We lay each root tree independently then place them side by side
   const unitWidth = (unit: FamilyUnit) =>
-    unit.spouseIds.length >= 2 ? 2 * NODE_W + COUPLE_GAP : NODE_W;
+    Math.max(1, unit.spouseIds.length) * (NODE_W + COUPLE_GAP) - COUPLE_GAP;
 
   function layoutTree(root: FamilyUnit): void {
     const hier = hierarchy<FamilyUnit>(root, d => d.children.length > 0 ? d.children : null);
@@ -189,16 +207,13 @@ function layoutFamilyTree(graph: GraphData): GraphData {
         const famNode = nodeById.get(unit.famNodeId);
         if (famNode && famNode.x === undefined) { famNode.x = cx; famNode.y = y; }
 
-        const spouses = unit.spouseIds;
-        if (spouses.length >= 2) {
-          const n1 = nodeById.get(spouses[0]);
-          const n2 = nodeById.get(spouses[1]);
-          if (n1 && n1.x === undefined) { n1.x = cx - COUPLE_GAP / 2 - NODE_W / 2; n1.y = y; }
-          if (n2 && n2.x === undefined) { n2.x = cx + COUPLE_GAP / 2 + NODE_W / 2; n2.y = y; }
-        } else if (spouses.length === 1) {
-          const n = nodeById.get(spouses[0]);
-          if (n && n.x === undefined) { n.x = cx; n.y = y; }
-        }
+        // Spread the spouses evenly around the unit centre.
+        const step = NODE_W + COUPLE_GAP;
+        const firstX = cx - ((unit.spouseIds.length - 1) * step) / 2;
+        unit.spouseIds.forEach((id, i) => {
+          const n = nodeById.get(id);
+          if (n && n.x === undefined) { n.x = firstX + i * step; n.y = y; }
+        });
       } else if (unit.indId) {
         const n = nodeById.get(unit.indId);
         if (n && n.x === undefined) { n.x = cx; n.y = y; }
@@ -226,8 +241,8 @@ function layoutFamilyTree(graph: GraphData): GraphData {
       const n = nodeById.get(spId);
       if (n?.x !== undefined) { n.x += dx; n.y = (n.y ?? 0) + dy; }
     }
-    // Only shift family node if this unit "owns" it (has spouses — non-empty unit)
-    if (unit.spouseIds.length > 0 && unit.famNodeId) {
+    // Only shift family node if this unit "owns" it (not an empty stub)
+    if ((unit.spouseIds.length > 0 || unit.children.length > 0) && unit.famNodeId) {
       const fn = nodeById.get(unit.famNodeId);
       if (fn?.x !== undefined) { fn.x += dx; fn.y = (fn.y ?? 0) + dy; }
     }

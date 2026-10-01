@@ -83,10 +83,14 @@ function getParserWorker(): Worker {
   return parserWorker;
 }
 
+let parseSeq = 0;
+let loadSeq = 0;
 function parseOnWorker(content: string): Promise<{ data: GedcomData; format: string }> {
+  const id = ++parseSeq;
   return new Promise((resolve, reject) => {
     const worker = getParserWorker();
     const handler = (e: MessageEvent) => {
+      if (e.data.id !== id) return; // another load's answer
       worker.removeEventListener('message', handler);
       worker.removeEventListener('error', errHandler);
       if (e.data.type === 'parse-result') {
@@ -102,7 +106,7 @@ function parseOnWorker(content: string): Promise<{ data: GedcomData; format: str
     };
     worker.addEventListener('message', handler);
     worker.addEventListener('error', errHandler);
-    worker.postMessage({ type: 'parse', content });
+    worker.postMessage({ type: 'parse', id, content });
   });
 }
 
@@ -150,16 +154,20 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   mediaUrls: [],
 
   loadFile: (content, filename, bytes, media) => {
+    // A newer load supersedes this one; its late results must not land.
+    const load = ++loadSeq;
+    const current = () => load === loadSeq;
     revokeMedia(get().mediaUrls);
     set({ parsing: true, lintResult: null, linting: true, mediaUrls: [...(media?.values() ?? [])] });
     // Health check runs beside the parse: the tree renders without waiting.
     runGedlint(bytes)
-      .then((lintResult) => set({ lintResult, linting: false }))
+      .then((lintResult) => { if (current()) set({ lintResult, linting: false }); })
       .catch((error) => {
         console.warn('gedlint unavailable:', error);
-        set({ linting: false });
+        if (current()) set({ linting: false });
       });
     parseOnWorker(content).then(({ data, format }) => {
+      if (!current()) return;
       if (media) attachMedia(data, media);
       set({
         rawData: content,
@@ -175,6 +183,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       void uploadToServer(data, bytes);
     }).catch((error) => {
       console.error('Failed to parse GEDCOM:', error);
+      if (!current()) return;
       set({ parsing: false });
       alert('Failed to parse GEDCOM file');
     });
@@ -211,6 +220,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   togglePersonPanel: () => set((s) => ({ personPanelOpen: !s.personPanelOpen })),
 
   clear: () => {
+    loadSeq++; // drop any load still in flight
     revokeMedia(get().mediaUrls);
     set({
       rawData: null,

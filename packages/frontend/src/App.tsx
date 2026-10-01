@@ -25,7 +25,7 @@ function getInitialTheme(): ThemeId {
 function App() {
   const {
     data, viewData, filename, format, screen, parsing,
-    selectedId, loadFile, selectPerson, togglePersonPanel,
+    selectedId, personPanelOpen, loadFile, selectPerson, togglePersonPanel,
     setFocus, viewAll, changeFocus, clear,
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
@@ -44,6 +44,8 @@ function App() {
   }, [theme]);
 
   const selectedPerson = selectedId && viewData ? viewData.individuals.get(selectedId) : null;
+  // Closing the panel keeps the selection highlighted; the header button reopens it.
+  const personPanelVisible = !!selectedPerson && personPanelOpen;
 
   // Screen: Upload
   if (screen === 'upload' || !data) {
@@ -158,18 +160,18 @@ function App() {
         </div>
 
         {/* Backdrop for mobile panels */}
-        {(selectedPerson || agentVisible) && (
+        {(personPanelVisible || agentVisible) && (
           <div
             className="md:hidden fixed inset-0 bg-black/50 z-40"
             onClick={() => {
-              selectPerson(null);
+              if (personPanelOpen) togglePersonPanel();
               setAgentOpen(false);
             }}
           />
         )}
 
         {/* Side panel - bottom sheet on mobile */}
-        {selectedPerson && (
+        {personPanelVisible && (
           <div className="fixed md:relative inset-x-0 bottom-0 md:inset-x-auto
             h-[60vh] md:h-auto w-full md:w-80
             border-t md:border-l border-border bg-background z-50 md:z-auto
@@ -177,7 +179,7 @@ function App() {
             <PersonPanel
               individual={selectedPerson}
               data={displayData}
-              onClose={() => selectPerson(null)}
+              onClose={togglePersonPanel}
               onSelectPerson={selectPerson}
             />
           </div>

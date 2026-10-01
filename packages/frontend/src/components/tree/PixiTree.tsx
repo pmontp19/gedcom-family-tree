@@ -171,13 +171,17 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   }, [graph, detailLevel, themeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Update selection highlight ───────────────────────────────────────────
+  // Only the old and new selection change; a rebuild already drew the rest.
+  const prevSelectedRef = useRef(selectedId);
   useEffect(() => {
     if (!readyRef.current || !worldRef.current) return;
-    const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
-    for (const [id, container] of nodeContainersRef.current) {
-      const node = nodeMap.get(id);
-      if (node) (container as NodeContainer).__redrawCard?.(id === selectedId);
-    }
+    const redraw = (id: string | undefined) => {
+      const container = id ? nodeContainersRef.current.get(id) as NodeContainer | undefined : undefined;
+      container?.__redrawCard?.(id === selectedId);
+    };
+    redraw(prevSelectedRef.current);
+    redraw(selectedId);
+    prevSelectedRef.current = selectedId;
   }, [selectedId, graph, themeId]);
 
   // ─── Apply transform + culling ────────────────────────────────────────────
@@ -207,7 +211,8 @@ function rebuildScene(
   onSelect: ((id: string) => void) | undefined,
   themeId?: ThemeId,
 ) {
-  world.removeChildren();
+  // Detached is not freed: destroy the old scene's geometry and text textures.
+  for (const child of world.removeChildren()) child.destroy({ children: true });
   nodeContainers.clear();
 
   const theme = getTreeTheme(themeId);
@@ -350,6 +355,8 @@ async function addPhoto(container: Container, url: string, initials: Text) {
   if (container.destroyed || !container.parent) return;
 
   const sprite = new Sprite(Texture.from(img));
+  // Each rebuild uploads a fresh texture; free it with the sprite.
+  sprite.on('destroyed', () => sprite.texture.destroy(true));
   sprite.anchor.set(0.5);
   sprite.position.set(AVATAR_CX, 0);
   // Cover the circle: scale by the short side and let the long one overflow.
@@ -376,17 +383,32 @@ function createNodeSprite(
 
   if (detailLevel === 'dot') {
     const gfx = new Graphics();
-    gfx.circle(0, 0, 4.5).fill(sexColor);
+    const draw = (sel: boolean) => {
+      gfx.clear().circle(0, 0, 4.5).fill(sexColor);
+      // A ring big enough to spot at the zoom level that shows dots.
+      if (sel) gfx.circle(0, 0, 14).stroke({ color: lighten(sexColor, 0.25), width: 6 });
+    };
+    draw(selected);
     container.addChild(gfx);
+    container.__redrawCard = draw;
     return container;
   }
 
   if (detailLevel === 'simple') {
     const gfx = new Graphics();
-    gfx.roundRect(-HALF_W, -HALF_H, NODE_W, NODE_H, NODE_RADIUS)
-      .fill(palette.nodeBg)
-      .stroke({ color: sexColor, width: 2, join: 'round' });
+    const draw = (sel: boolean) => {
+      gfx.clear();
+      if (sel) {
+        gfx.roundRect(-HALF_W - 8, -HALF_H - 8, NODE_W + 16, NODE_H + 16, NODE_RADIUS + 8)
+          .stroke({ color: sexColor, width: 12, alpha: 0.35 });
+      }
+      gfx.roundRect(-HALF_W, -HALF_H, NODE_W, NODE_H, NODE_RADIUS)
+        .fill(sel ? lighten(palette.nodeBg, 0.12) : palette.nodeBg)
+        .stroke({ color: sel ? lighten(sexColor, 0.25) : sexColor, width: sel ? 4 : 2, join: 'round' });
+    };
+    draw(selected);
     container.addChild(gfx);
+    container.__redrawCard = draw;
     container.eventMode = 'static';
     container.cursor = 'pointer';
     container.on('pointertap', () => onSelect?.(node.id));
@@ -523,9 +545,11 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: TreePalette) {
     // Marriage bar: between the two spouses, aligned with the card bottom edge
     let famX: number;
     let barY: number;
-    if (positioned.length === 0) {
-      // Family with children but no spouses: drop from the family connector node
-      if (children.length === 0 || !famNode ||
+    const noParents = positioned.length === 0;
+    if (noParents) {
+      // Family with children but no recorded parents: only the sibling bus,
+      // a line dropping out of empty space would invent a parent.
+      if (children.length < 2 || !famNode ||
           famNode.x === undefined || famNode.y === undefined) continue;
       famX = famNode.x;
       barY = famNode.y + HALF_H;
@@ -574,20 +598,23 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: TreePalette) {
     }
 
     // Vertical drop from the bar to the bus
-    gfx.moveTo(famX, barY).lineTo(famX, busY)
-      .stroke({ color: palette.edgeChild, width: 2.5, cap: 'round' });
+    if (!noParents) {
+      gfx.moveTo(famX, barY).lineTo(famX, busY)
+        .stroke({ color: palette.edgeChild, width: 2.5, cap: 'round' });
+    }
 
     // Junction dot where the drop meets the sibling bus
-    if (hasOffsetChild) {
+    if (hasOffsetChild && !noParents) {
       gfx.circle(famX, busY, 4.5).fill(palette.edgeMarriage);
     }
   }
 
   // Ancestor stub connections
+  const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
   for (const link of graph.links) {
     if (link.type !== 'ancestor-stub') continue;
-    const source = graph.nodes.find(n => n.id === link.source); // stub node
-    const target = graph.nodes.find(n => n.id === link.target); // individual
+    const source = nodeMap.get(link.source); // stub node
+    const target = nodeMap.get(link.target); // individual
     if (!source || !target ||
         source.x === undefined || source.y === undefined ||
         target.x === undefined || target.y === undefined) continue;
