@@ -214,7 +214,10 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
         const focus = scale > fitScale ? individualNodes.find(n => n.id === focusIdRef.current) : undefined;
         const cx = focus?.x ?? bounds.minX + bounds.width / 2;
         const cy = focus?.y ?? bounds.minY + bounds.height / 2;
-        sel.call(zoomBehavior.transform, zoomIdentity.translate(cw / 2 - cx * scale, ch / 2 - cy * scale).scale(scale));
+        // zoom.transform skips the translate extent; clamp now, or the first
+        // pan would snap the view back inside it.
+        const t = zoomIdentity.translate(cw / 2 - cx * scale, ch / 2 - cy * scale).scale(scale);
+        sel.call(zoomBehavior.transform, zoomBehavior.constrain()(t, [[0, 0], [cw, ch]], zoomBehavior.translateExtent()));
       }
 
       return () => {
