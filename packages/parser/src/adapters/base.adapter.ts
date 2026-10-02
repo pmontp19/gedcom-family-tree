@@ -1,6 +1,6 @@
 import { getDataByTag, getFirstChildByTag } from '../tree-builder.js';
 import type { TreeNode } from '../tree-builder.js';
-import type { GedcomData, Individual, Family, Event, GedcomHeader, Source, MediaFile } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, Citation, GedcomHeader, Source, MediaFile } from '@gedcom/shared';
 import { parseName, createIndividual, createFamily } from '@gedcom/shared';
 import { parseDate } from '../utils/date-parser.js';
 
@@ -23,6 +23,8 @@ const INDIVIDUAL_EVENT_TAGS = new Set([
   'ADOP', 'BAPM', 'BARM', 'BASM', 'BLES', 'BURI', 'CENS', 'CHR', 'CHRA', 'CONF', 'CREM',
   'EDUC', 'EMIG', 'EVEN', 'FCOM', 'GRAD', 'IMMI', 'MILI', 'NATU', 'ORDN', 'OCCU',
   'PROB', 'PROP', 'RESI', 'RETI', 'WILL',
+  // Attributes: same shape, the value is the point.
+  'DSCR', 'FACT', 'NATI', 'RELI', 'TITL',
 ]);
 
 /**
@@ -50,6 +52,7 @@ export abstract class BaseAdapter {
 
   /** Top-level `0 @O1@ OBJE` records, so `1 OBJE @O1@` pointers can resolve. */
   protected mediaRecords = new Map<string, MediaFile[]>();
+  protected noteRecords = new Map<string, string>();
 
   parseHeader(node: TreeNode): GedcomHeader {
     const header: GedcomHeader = { customTags: new Map() };
@@ -149,10 +152,13 @@ export abstract class BaseAdapter {
         ind.media.push(...this.resolveMedia(node));
         break;
       case 'NOTE':
-        if (node.data) ind.notes.push(node.data);
+      case 'SNOTE': {
+        const note = this.noteText(node);
+        if (note) ind.notes.push(note);
         break;
+      }
       case 'SOUR':
-        if (node.data) ind.sources.push(this.extractPointer(node.data) || node.data);
+        if (node.data) ind.sources.push(this.parseCitation(node));
         break;
       default:
         if (INDIVIDUAL_EVENT_TAGS.has(node.tag)) {
@@ -201,10 +207,13 @@ export abstract class BaseAdapter {
           fam.events.push(this.parseEvent(child, 'DIV'));
           break;
         case 'NOTE':
-          if (child.data) fam.notes.push(child.data);
+        case 'SNOTE': {
+          const note = this.noteText(child);
+          if (note) fam.notes.push(note);
           break;
+        }
         case 'SOUR':
-          if (child.data) fam.sources.push(this.extractPointer(child.data) || child.data);
+          if (child.data) fam.sources.push(this.parseCitation(child));
           break;
         default:
           if (child.tag?.startsWith('_')) {
@@ -218,6 +227,8 @@ export abstract class BaseAdapter {
 
   protected parseEvent(node: TreeNode, type: string): Event {
     const event: Event = { type };
+    // `1 BIRT Y` only asserts the event happened; anything else is a value.
+    if (node.data && node.data !== 'Y') event.value = node.data;
 
     for (const child of node.children) {
       switch (child.tag) {
@@ -227,17 +238,17 @@ export abstract class BaseAdapter {
         case 'PLAC':
           event.place = child.data;
           break;
-        case 'NOTE':
-          if (child.data) {
-            event.notes = event.notes || [];
-            event.notes.push(child.data);
-          }
+        case 'TYPE':
+          event.descriptor = child.data;
           break;
+        case 'NOTE':
+        case 'SNOTE': {
+          const note = this.noteText(child);
+          if (note) (event.notes ??= []).push(note);
+          break;
+        }
         case 'SOUR':
-          if (child.data) {
-            event.sources = event.sources || [];
-            event.sources.push(this.extractPointer(child.data) || child.data);
-          }
+          if (child.data) (event.sources ??= []).push(this.parseCitation(child));
           break;
         default:
           if (child.tag?.startsWith('_')) {
@@ -248,6 +259,19 @@ export abstract class BaseAdapter {
     }
 
     return event;
+  }
+
+  /** Inline note text, or the text of the NOTE/SNOTE record it points at. */
+  protected noteText(node: TreeNode): string | undefined {
+    if (!node.data) return undefined;
+    const pointer = /^@[^@\s]+@$/.test(node.data.trim()) ? this.extractPointer(node.data) : undefined;
+    return pointer ? this.noteRecords.get(pointer) : node.data;
+  }
+
+  protected parseCitation(node: TreeNode): Citation {
+    const id = this.extractPointer(node.data ?? '');
+    const page = node.children.find(c => c.tag === 'PAGE')?.data;
+    return { ...(id ? { id } : { text: node.data }), ...(page ? { page } : {}) };
   }
 
   protected extractPointer(data: string): string | undefined {
@@ -267,13 +291,17 @@ export abstract class BaseAdapter {
       notes: new Map(),
     };
 
-    // Media records first: individuals point at them and may come earlier.
+    // Media and shared note records first: individuals point at them and may come earlier.
     this.mediaRecords = new Map();
+    this.noteRecords = new Map();
     for (const node of nodes) {
       if (node.tag === 'OBJE' && node.pointer) {
         this.mediaRecords.set(node.pointer, parseMediaRecord(node));
+      } else if ((node.tag === 'NOTE' || node.tag === 'SNOTE') && node.pointer) {
+        this.noteRecords.set(node.pointer, node.data ?? '');
       }
     }
+    data.notes = this.noteRecords;
 
     for (const node of nodes) {
       switch (node.tag) {

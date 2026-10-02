@@ -54,6 +54,41 @@ describe('parser robustness', () => {
   });
 });
 
+describe('notes and citations', () => {
+  const data = parseGedcom([
+    '0 HEAD', '1 GEDC', '2 VERS 5.5.1',
+    '0 @I1@ INDI', '1 NOTE @N1@', '1 NOTE Inline', '2 CONT line 2',
+    '1 SOUR @S1@', '2 PAGE Foli 23', '1 SOUR Baptismal book', '1 BIRT', '2 SOUR @S1@', '2 NOTE @N1@',
+    '0 @N1@ NOTE Shared note', '0 @S1@ SOUR', '1 TITL Llibre de baptismes', '0 TRLR',
+  ].join('\n'));
+  const ind = data.individuals.get('I1')!;
+
+  it('resolves shared NOTE records, even when they come after', () => {
+    expect(ind.notes).toEqual(['Shared note', 'Inline\nline 2']);
+    expect(ind.events[0].notes).toEqual(['Shared note']);
+    expect(data.notes.get('N1')).toBe('Shared note');
+  });
+
+  it('keeps the citation page and inline sources', () => {
+    expect(ind.sources).toEqual([{ id: 'S1', page: 'Foli 23' }, { text: 'Baptismal book' }]);
+    expect(ind.events[0].sources).toEqual([{ id: 'S1' }]);
+    expect(data.sources.get('S1')?.title).toBe('Llibre de baptismes');
+  });
+
+  it('keeps event values and TYPE', () => {
+    const d = parseGedcom(['0 HEAD', '0 @I1@ INDI', '1 OCCU Pagès', '1 EVEN Lleva', '2 TYPE Servei militar', '1 BIRT Y', '0 TRLR'].join('\n'));
+    const [occu, even, birt] = d.individuals.get('I1')!.events;
+    expect(occu).toMatchObject({ type: 'OCCU', value: 'Pagès' });
+    expect(even).toMatchObject({ type: 'EVEN', value: 'Lleva', descriptor: 'Servei militar' });
+    expect(birt.value).toBeUndefined();
+  });
+
+  it('resolves 7.0 SNOTE', () => {
+    const d7 = parseGedcom(['0 HEAD', '1 GEDC', '2 VERS 7.0', '0 @I1@ INDI', '1 SNOTE @N1@', '0 @N1@ SNOTE Shared 7', '0 TRLR'].join('\n'));
+    expect(d7.individuals.get('I1')?.notes).toEqual(['Shared 7']);
+  });
+});
+
 describe('parseDate calendars and ranges', () => {
   it('drops Julian/Gregorian escapes', () => {
     expect(parseDate('@#DJULIAN@ 1700')).toEqual({ year: 1700 });
