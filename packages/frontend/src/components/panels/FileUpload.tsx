@@ -27,7 +27,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
       onFileLoad(decodeGedcom(bytes), file.name, bytes);
     } catch (err) {
       console.error('Failed to read file:', err);
-      alert(`Could not read ${file.name}`);
+      alert(`No s'ha pogut llegir ${file.name}`);
     }
   }, [onFileLoad]);
 
@@ -49,9 +49,9 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
       onDragOver={(e) => e.preventDefault()}
     >
       <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg font-semibold mb-2">Upload GEDCOM File</h3>
+      <h3 className="text-lg font-semibold mb-2">Puja un fitxer GEDCOM</h3>
       <p className="text-sm text-muted-foreground text-center mb-4">
-        Drag and drop a .ged or .gdz file here, or click to select
+        Arrossega aquí un fitxer .ged o .gdz, o fes clic per triar-lo
       </p>
       <label>
         <input
@@ -63,7 +63,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
         <Button variant="outline" asChild>
           <span className="cursor-pointer">
             <FileText className="h-4 w-4 mr-2" />
-            Select File
+            Tria un fitxer
           </span>
         </Button>
       </label>

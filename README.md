@@ -11,6 +11,8 @@ Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree.
 - Parse GEDCOM 5.5.1 and 7.0 files (MyHeritage compatible), plus GEDZIP (`.gdz`) packages with photos
 - Reads UTF-8, UTF-16, ANSEL and ANSI files, and any line ending
 - Interactive family tree: focus on a person, pan and zoom, level of detail when zoomed out
+- Person panel for research: events with their notes and cited sources (with page), other names, every parent family, siblings and half-siblings, notes and sources
+- UI in Catalan
 - Tree Health: in-browser GEDCOM lint (gedlint, WASM)
 - AI assistant for genealogy queries (off by default, see below)
 - Responsive mobile-friendly UI

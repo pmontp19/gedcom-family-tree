@@ -16,20 +16,20 @@ interface MigrationTimelineProps {
 }
 
 const EVENT_LABELS: Record<string, string> = {
-  BIRT: 'Born',
-  DEAT: 'Died',
-  MARR: 'Married',
-  DIV: 'Divorced',
-  RESI: 'Lived',
-  IMMI: 'Immigrated',
-  EMIG: 'Emigrated',
-  NATU: 'Naturalized',
-  CENS: 'Census',
-  BURI: 'Buried',
-  BAPM: 'Baptized',
-  OCCU: 'Worked',
-  EDUC: 'Studied',
-  MILI: 'Served',
+  BIRT: 'Naixement',
+  DEAT: 'Defunció',
+  MARR: 'Casament',
+  DIV: 'Divorci',
+  RESI: 'Residència',
+  IMMI: 'Immigració',
+  EMIG: 'Emigració',
+  NATU: 'Naturalització',
+  CENS: 'Cens',
+  BURI: 'Enterrament',
+  BAPM: 'Baptisme',
+  OCCU: 'Ofici',
+  EDUC: 'Estudis',
+  MILI: 'Servei militar',
 };
 
 export function MigrationTimeline({ props }: MigrationTimelineProps) {
@@ -39,15 +39,15 @@ export function MigrationTimeline({ props }: MigrationTimelineProps) {
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Migration: {rootName}</CardTitle>
+        <CardTitle className="text-sm">Migracions: {rootName}</CardTitle>
         <p className="text-xs text-muted-foreground">
-          {steps.length} placed {steps.length === 1 ? 'event' : 'events'} across {places.size}{' '}
-          {places.size === 1 ? 'place' : 'places'}
+          {steps.length} {steps.length === 1 ? 'esdeveniment' : 'esdeveniments'} amb lloc en {places.size}{' '}
+          {places.size === 1 ? 'lloc' : 'llocs'}
         </p>
       </CardHeader>
       <CardContent>
         {steps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No events with a place recorded.</p>
+          <p className="text-sm text-muted-foreground">Cap esdeveniment amb lloc registrat.</p>
         ) : (
           <div className="relative pl-4 space-y-3">
             <div className="absolute left-0 top-0 bottom-0 w-px bg-border ml-1.5" />
@@ -56,7 +56,7 @@ export function MigrationTimeline({ props }: MigrationTimelineProps) {
                 <div className="absolute -left-4 flex h-3 w-3 items-center justify-center rounded-full bg-background border border-border mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="w-14 shrink-0 tabular-nums text-xs text-muted-foreground">{step.year ?? 'undated'}</span>
+                    <span className="w-14 shrink-0 tabular-nums text-xs text-muted-foreground">{step.year ?? 'sense data'}</span>
                     <span className="font-medium truncate">📍 {step.place}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">

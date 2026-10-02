@@ -1,13 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, Citation } from '@gedcom/shared';
 import { getDisplayName, getLifeYears, formatDateLong } from '@gedcom/shared';
 import {
-  X, MapPin, Users, Heart, Home, Briefcase, GraduationCap,
-  Plane, Baby, Skull, Church, Scale, Image as ImageIcon
+  X, MapPin, Users, Heart, Home, Briefcase, GraduationCap, Plane, Baby, Skull,
+  Church, Scale, Image as ImageIcon, BookOpen, StickyNote, Droplets, Landmark, ScrollText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { findSiblings } from '@/services/relatives';
 
 interface PersonPanelProps {
   individual: Individual;
@@ -16,11 +17,17 @@ interface PersonPanelProps {
   onSelectPerson?: (id: string) => void;
 }
 
+const SEX_LABELS: Record<string, string> = { M: 'Home', F: 'Dona' };
+
 export function PersonPanel({ individual, data, onClose, onSelectPerson }: PersonPanelProps) {
-  const parents = individual.famc[0] ? data.families.get(individual.famc[0]) : null;
+  const parentFamilies = individual.famc.map(id => data.families.get(id))
+    .filter((f): f is Family => !!f && !!(f.husband || f.wife));
   const spouseFamilies = individual.fams.map(id => data.families.get(id)).filter(Boolean) as Family[];
+  const siblings = findSiblings(individual, data);
   const lifeYears = getLifeYears(individual);
-  const genderLabel = individual.sex === 'M' ? 'Male' : individual.sex === 'F' ? 'Female' : null;
+  const sexLabel = SEX_LABELS[individual.sex ?? ''];
+  const otherNames = [...new Set(individual.aliases.map(n => n.full))]
+    .filter(n => n && n !== individual.name?.full);
   // Only files something resolved to a loadable URL: the rest would render broken.
   const photos = individual.media.filter((m) => m.url);
 
@@ -43,9 +50,14 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
             <CardTitle className="text-base md:text-lg leading-tight">
               {getDisplayName(individual)}
             </CardTitle>
-            {(lifeYears || genderLabel) && (
+            {(lifeYears || sexLabel) && (
               <p className="text-sm text-muted-foreground mt-0.5">
-                {[lifeYears, genderLabel].filter(Boolean).join(' · ')}
+                {[lifeYears, sexLabel].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {otherNames.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                També: {otherNames.join(', ')}
               </p>
             )}
           </div>
@@ -55,6 +67,7 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
             variant="ghost"
             size="icon"
             onClick={onClose}
+            aria-label="Tanca"
             className="h-9 w-9 md:h-10 md:w-10 shrink-0 ml-2"
           >
             <X className="h-4 w-4" />
@@ -63,13 +76,14 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
       </CardHeader>
       <CardContent className="px-4 pb-4">
         <ScrollArea className="h-[calc(60vh-120px)] md:h-[calc(100vh-200px)]">
-          <div className="space-y-4">
-            <EventsTimeline individual={individual} />
+          {/* Right padding: the overlay scrollbar would sit on top of the cards. */}
+          <div className="space-y-4 pr-3">
+            <EventsTimeline individual={individual} data={data} />
 
             {photos.length > 1 && (
               <>
                 <Separator />
-                <SectionHeader icon={<ImageIcon className="h-4 w-4" />} label="Photos" />
+                <SectionHeader icon={<ImageIcon className="h-4 w-4" />} label="Fotos" />
                 <div className="grid grid-cols-3 gap-2">
                   {photos.map((m) => (
                     <img
@@ -84,17 +98,33 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
               </>
             )}
 
-            {parents && (parents.husband || parents.wife) && (
+            {parentFamilies.length > 0 && (
               <>
                 <Separator />
-                <SectionHeader icon={<Users className="h-4 w-4" />} label="Parents" />
+                <SectionHeader icon={<Users className="h-4 w-4" />} label="Pares" />
+                {parentFamilies.map((fam, i) => (
+                  <div key={fam.id} className="space-y-1.5">
+                    {/* Adoption, foster or a second record of the same birth. */}
+                    {parentFamilies.length > 1 && (
+                      <span className="text-xs text-muted-foreground pl-1">Família d'origen {i + 1}</span>
+                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      {fam.husband && <RelativeCard id={fam.husband} data={data} onClick={onSelectPerson} />}
+                      {fam.wife && <RelativeCard id={fam.wife} data={data} onClick={onSelectPerson} />}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {siblings.length > 0 && (
+              <>
+                <Separator />
+                <SectionHeader icon={<Users className="h-4 w-4" />} label="Germans" />
                 <div className="flex gap-2 flex-wrap">
-                  {parents.husband && (
-                    <RelativeCard id={parents.husband} data={data} onClick={onSelectPerson} />
-                  )}
-                  {parents.wife && (
-                    <RelativeCard id={parents.wife} data={data} onClick={onSelectPerson} />
-                  )}
+                  {siblings.map(s => (
+                    <RelativeCard key={s.id} id={s.id} data={data} onClick={onSelectPerson} note={s.via} />
+                  ))}
                 </div>
               </>
             )}
@@ -102,7 +132,7 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
             {spouseFamilies.length > 0 && (
               <>
                 <Separator />
-                <SectionHeader icon={<Heart className="h-4 w-4" />} label="Family" />
+                <SectionHeader icon={<Heart className="h-4 w-4" />} label="Família" />
                 {spouseFamilies.map((fam) => (
                   <FamilySection
                     key={fam.id}
@@ -112,6 +142,28 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
                     onSelectPerson={onSelectPerson}
                   />
                 ))}
+              </>
+            )}
+
+            {individual.notes.length > 0 && (
+              <>
+                <Separator />
+                <SectionHeader icon={<StickyNote className="h-4 w-4" />} label="Notes" />
+                <div className="space-y-2">
+                  {individual.notes.map((note, i) => (
+                    <p key={i} className="text-sm text-muted-foreground whitespace-pre-line break-words">{note}</p>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {individual.sources.length > 0 && (
+              <>
+                <Separator />
+                <SectionHeader icon={<BookOpen className="h-4 w-4" />} label="Fonts" />
+                <ul className="space-y-2">
+                  {individual.sources.map((c, i) => <SourceItem key={i} citation={c} data={data} />)}
+                </ul>
               </>
             )}
           </div>
@@ -133,30 +185,49 @@ function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }
 // ─── Events Timeline ────────────────────────────────────────────────────────
 
 const EVENT_LABELS: Record<string, string> = {
-  BIRT: 'Birth', DEAT: 'Death', MARR: 'Marriage', DIV: 'Divorce',
-  RESI: 'Residence', OCCU: 'Occupation', EDUC: 'Education',
-  IMMI: 'Immigration', EMIG: 'Emigration',
+  BIRT: 'Naixement', DEAT: 'Defunció', MARR: 'Casament', DIV: 'Divorci',
+  BAPM: 'Bateig', CHR: 'Bateig', CHRA: 'Bateig d\'adult', CONF: 'Confirmació', FCOM: 'Primera comunió',
+  BURI: 'Enterrament', CREM: 'Cremació', ADOP: 'Adopció', BLES: 'Benedicció', ORDN: 'Ordenació',
+  BARM: 'Bar mitsvà', BASM: 'Bat mitsvà',
+  RESI: 'Residència', OCCU: 'Ofici', EDUC: 'Estudis', GRAD: 'Graduació', RETI: 'Jubilació',
+  IMMI: 'Immigració', EMIG: 'Emigració', NATU: 'Naturalització', CENS: 'Cens', MILI: 'Servei militar',
+  PROB: 'Testamentaria', WILL: 'Testament', PROP: 'Propietat',
+  DSCR: 'Descripció', NATI: 'Nacionalitat', RELI: 'Religió', TITL: 'Títol',
+  EVEN: 'Esdeveniment', FACT: 'Fet',
 };
 
 function eventIcon(type: string) {
   const cls = 'h-3.5 w-3.5';
   switch (type) {
     case 'BIRT': return <Baby className={cls} />;
-    case 'DEAT': return <Skull className={cls} />;
-    case 'MARR': return <Church className={cls} />;
+    case 'DEAT':
+    case 'BURI':
+    case 'CREM': return <Skull className={cls} />;
+    case 'BAPM':
+    case 'CHR':
+    case 'CHRA': return <Droplets className={cls} />;
+    case 'MARR':
+    case 'CONF':
+    case 'FCOM': return <Church className={cls} />;
     case 'DIV':  return <Scale className={cls} />;
-    case 'RESI': return <Home className={cls} />;
+    case 'RESI':
+    case 'PROP': return <Home className={cls} />;
     case 'OCCU': return <Briefcase className={cls} />;
-    case 'EDUC': return <GraduationCap className={cls} />;
+    case 'EDUC':
+    case 'GRAD': return <GraduationCap className={cls} />;
     case 'IMMI':
     case 'EMIG': return <Plane className={cls} />;
+    case 'CENS':
+    case 'NATU': return <Landmark className={cls} />;
+    case 'WILL':
+    case 'PROB': return <ScrollText className={cls} />;
     default:     return <Heart className={cls} />;
   }
 }
 
-function EventsTimeline({ individual }: { individual: Individual }) {
-  // Collect all events (birth/death are stored separately but also in events array in most parsers;
-  // deduplicate by ensuring birth/death are included)
+function EventsTimeline({ individual, data }: { individual: Individual; data: GedcomData }) {
+  // Birth/death live in their own fields too; make sure they show even when
+  // a parser only filled those.
   const allEvents: Event[] = [...individual.events];
   if (individual.birth && !allEvents.some(e => e.type === 'BIRT')) {
     allEvents.unshift(individual.birth);
@@ -175,7 +246,7 @@ function EventsTimeline({ individual }: { individual: Individual }) {
 
   return (
     <div className="space-y-2">
-      <SectionHeader icon={null} label="Life Events" />
+      <SectionHeader icon={null} label="Esdeveniments" />
       <div className="relative ml-3 border-l border-border space-y-3 pl-4">
         {sorted.map((event, i) => (
           <div key={i} className="relative">
@@ -184,24 +255,60 @@ function EventsTimeline({ individual }: { individual: Individual }) {
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground min-w-0">
                 <span className="text-muted-foreground shrink-0">{eventIcon(event.type)}</span>
-                <span>{EVENT_LABELS[event.type] ?? event.type}</span>
+                <span>{event.descriptor ?? EVENT_LABELS[event.type] ?? event.type}</span>
               </div>
               {event.date && (
-                <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                <span className="text-xs text-muted-foreground text-right shrink-0 max-w-[50%]">
                   {formatDateLong(event.date)}
                 </span>
               )}
             </div>
+            {event.value && (
+              <p className="text-sm text-foreground/90 mt-0.5 break-words">{event.value}</p>
+            )}
             {event.place && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <MapPin className="h-3 w-3 shrink-0" />
                 <span className="break-words">{event.place}</span>
               </p>
             )}
+            {event.notes?.map((note, j) => (
+              <p key={j} className="text-xs text-muted-foreground italic whitespace-pre-line break-words mt-1">{note}</p>
+            ))}
+            {event.sources && event.sources.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {event.sources.map((c, j) => (
+                  <li key={j} className="text-xs text-muted-foreground flex items-start gap-1">
+                    <BookOpen className="h-3 w-3 shrink-0 mt-0.5" />
+                    <span className="break-words">{citationLabel(c, data)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── Sources ─────────────────────────────────────────────────────────────────
+
+function citationLabel(c: Citation, data: GedcomData): string {
+  const source = c.id ? data.sources.get(c.id) : undefined;
+  const title = source?.title ?? c.text ?? c.id ?? 'Font sense títol';
+  return c.page ? `${title}, ${c.page}` : title;
+}
+
+function SourceItem({ citation, data }: { citation: Citation; data: GedcomData }) {
+  const source = citation.id ? data.sources.get(citation.id) : undefined;
+  const details = [source?.author, source?.publication].filter(Boolean).join(' · ');
+  return (
+    <li className="text-sm">
+      <p className="text-foreground break-words">{source?.title ?? citation.text ?? citation.id}</p>
+      {details && <p className="text-xs text-muted-foreground break-words">{details}</p>}
+      {citation.page && <p className="text-xs text-muted-foreground break-words">{citation.page}</p>}
+    </li>
   );
 }
 
@@ -212,9 +319,11 @@ interface RelativeCardProps {
   data: GedcomData;
   onClick?: (id: string) => void;
   highlight?: boolean;
+  /** Small qualifier after the years, e.g. "de pare" for a half-sibling. */
+  note?: string;
 }
 
-function RelativeCard({ id, data, onClick, highlight }: RelativeCardProps) {
+function RelativeCard({ id, data, onClick, highlight, note }: RelativeCardProps) {
   const ind = data.individuals.get(id);
   if (!ind) return null;
 
@@ -223,6 +332,7 @@ function RelativeCard({ id, data, onClick, highlight }: RelativeCardProps) {
     ind.sex === 'M' ? 'bg-blue-400' :
     ind.sex === 'F' ? 'bg-pink-400' :
     'bg-muted-foreground/40';
+  const sub = [lifeYears, note].filter(Boolean).join(' · ');
 
   return (
     <button
@@ -235,9 +345,7 @@ function RelativeCard({ id, data, onClick, highlight }: RelativeCardProps) {
         <span className={`w-2 h-2 rounded-full shrink-0 ${genderColor}`} />
         <span className="truncate">{getDisplayName(ind)}</span>
       </div>
-      {lifeYears && (
-        <p className="text-xs text-muted-foreground mt-0.5 pl-3.5">{lifeYears}</p>
-      )}
+      {sub && <p className="text-xs text-muted-foreground mt-0.5 pl-3.5">{sub}</p>}
     </button>
   );
 }
@@ -261,17 +369,20 @@ function FamilySection({ family, individualId, data, onSelectPerson }: FamilySec
   return (
     <div className="space-y-2">
       {spouse && (
-        <RelativeCard id={spouse.id} data={data} onClick={onSelectPerson} highlight />
+        <div className="flex">
+          <RelativeCard id={spouse.id} data={data} onClick={onSelectPerson} highlight />
+        </div>
       )}
       {(marriageDate || divorceDate) && (
         <p className="text-xs text-muted-foreground pl-1">
-          {marriageDate && `m. ${marriageDate}`}
-          {divorceDate && ` · div. ${divorceDate}`}
+          {marriageDate && `Casament: ${marriageDate}`}
+          {marriageDate && divorceDate && ' · '}
+          {divorceDate && `Divorci: ${divorceDate}`}
         </p>
       )}
       {family.children.length > 0 && (
         <div className="space-y-1.5">
-          <span className="text-xs text-muted-foreground pl-1">Children</span>
+          <span className="text-xs text-muted-foreground pl-1">Fills</span>
           <div className="flex flex-wrap gap-2">
             {family.children.map(childId => (
               <RelativeCard key={childId} id={childId} data={data} onClick={onSelectPerson} />

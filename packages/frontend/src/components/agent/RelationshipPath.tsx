@@ -20,7 +20,7 @@ export function RelationshipPath({ props }: RelationshipPathProps) {
     <Card className="w-full">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-sm">Relationship</CardTitle>
+          <CardTitle className="text-sm">Parentiu</CardTitle>
           <Badge>{relationship}</Badge>
         </div>
       </CardHeader>

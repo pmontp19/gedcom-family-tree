@@ -13,7 +13,7 @@ import type { ThemeId } from '@/visualization/theme';
 const THEME_OPTIONS: Array<{ id: ThemeId; label: string; icon: React.ReactNode }> = [
   { id: 'light', label: 'Clar', icon: <Sun /> },
   { id: 'dark', label: 'Fosc', icon: <Moon /> },
-  { id: 'heritage', label: 'Piugpelat Heritage', icon: <TreeDeciduous /> },
+  { id: 'heritage', label: 'Puigpelat Heritage', icon: <TreeDeciduous /> },
 ];
 
 interface ThemeToggleProps {

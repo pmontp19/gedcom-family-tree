@@ -11,6 +11,8 @@ interface FocusSelectorProps {
   onViewAll: () => void;
 }
 
+const MAX_RESULTS = 20;
+
 export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -25,11 +27,12 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
     [data]
   );
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return individuals.slice(0, 20);
+  const matches = useMemo(() => {
+    if (!query.trim()) return individuals;
     const q = query.toLowerCase();
-    return individuals.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
+    return individuals.filter(i => i.name.toLowerCase().includes(q));
   }, [query, individuals]);
+  const filtered = useMemo(() => matches.slice(0, MAX_RESULTS), [matches]);
 
   const handleSubmit = useCallback(() => {
     if (selectedId) onSelect(selectedId, generations);
@@ -40,9 +43,9 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
   return (
     <div className="max-w-lg mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-xl font-semibold">Choose Focus Person</h2>
+        <h2 className="text-xl font-semibold">Tria la persona central</h2>
         <p className="text-sm text-muted-foreground">
-          {data.individuals.size} individuals loaded. Select a focus person and how many generations to display.
+          {data.individuals.size.toLocaleString('ca')} {data.individuals.size === 1 ? 'persona carregada' : 'persones carregades'}. Tria la persona central i quantes generacions vols mostrar.
         </p>
       </div>
 
@@ -50,7 +53,7 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name..."
+          placeholder="Cerca per nom..."
           value={query}
           onChange={e => setQuery(e.target.value)}
           className="pl-9"
@@ -58,7 +61,7 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
       </div>
 
       {/* Results list */}
-      <div className="border rounded-lg max-h-60 overflow-y-auto">
+      <div className="border rounded-lg max-h-[max(15rem,calc(100dvh-31rem))] overflow-y-auto">
         {filtered.map(ind => (
           <button
             key={ind.id}
@@ -71,14 +74,19 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
           </button>
         ))}
         {filtered.length === 0 && (
-          <p className="p-3 text-sm text-muted-foreground text-center">No matches</p>
+          <p className="p-3 text-sm text-muted-foreground text-center">Cap resultat</p>
         )}
       </div>
+      {matches.length > filtered.length && (
+        <p className="text-xs text-muted-foreground -mt-4">
+          Es mostren {filtered.length} de {matches.length.toLocaleString('ca')}. Escriu per afinar la cerca.
+        </p>
+      )}
 
       {/* Generation slider */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span>Generations: {generations}</span>
+          <span>Generacions: {generations}</span>
           <span className="text-muted-foreground">1–10</span>
         </div>
         <input
@@ -95,11 +103,11 @@ export function FocusSelector({ data, onSelect, onViewAll }: FocusSelectorProps)
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={!selectedId} className="flex-1">
           <Users className="h-4 w-4 mr-2" />
-          View Tree
+          Mostra l'arbre
         </Button>
         {isSmallTree && (
           <Button variant="outline" onClick={onViewAll}>
-            View All
+            Mostra-ho tot
           </Button>
         )}
       </div>

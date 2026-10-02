@@ -30,12 +30,12 @@ export function AncestorList({ props }: AncestorListProps) {
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Ancestors ({items.length})</CardTitle>
+        <CardTitle className="text-sm">Avantpassats ({items.length})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {Array.from(byGen.entries()).sort(([a], [b]) => a - b).map(([gen, people]) => (
           <div key={gen}>
-            <p className="text-xs font-medium text-muted-foreground mb-1">Generation {gen}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Generació {gen}</p>
             <div className="space-y-1">
               {people.map(p => (
                 <div key={p.ahnentafel ?? p.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
@@ -49,7 +49,7 @@ export function AncestorList({ props }: AncestorListProps) {
                   <span className="text-muted-foreground text-xs shrink-0 tabular-nums pl-2">
                     {p.birth_year && p.death_year
                       ? `${p.birth_year}–${p.death_year}`
-                      : p.birth_year ? `b. ${p.birth_year}` : ''}
+                      : p.birth_year ? `n. ${p.birth_year}` : ''}
                   </span>
                 </div>
               ))}

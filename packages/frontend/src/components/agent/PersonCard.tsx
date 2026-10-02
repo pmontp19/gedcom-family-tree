@@ -17,8 +17,8 @@ export function PersonCard({ props }: PersonCardProps) {
   const { name, birth_year, death_year, birthplace, sex } = props;
   const lifespan = birth_year && death_year
     ? `${birth_year} – ${death_year}`
-    : birth_year ? `b. ${birth_year}`
-    : death_year ? `d. ${death_year}`
+    : birth_year ? `n. ${birth_year}`
+    : death_year ? `m. ${death_year}`
     : null;
 
   return (
@@ -28,7 +28,7 @@ export function PersonCard({ props }: PersonCardProps) {
           <CardTitle className="text-base">{name}</CardTitle>
           {sex && sex !== 'U' && (
             <Badge variant="secondary" className="shrink-0">
-              {sex === 'M' ? 'Male' : 'Female'}
+              {sex === 'M' ? 'Home' : 'Dona'}
             </Badge>
           )}
         </div>

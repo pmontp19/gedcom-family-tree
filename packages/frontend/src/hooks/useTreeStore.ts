@@ -3,6 +3,7 @@ import type { GedcomData, Individual, Family } from '@gedcom/shared';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
+import { AI_ENABLED } from '@/config';
 
 function serializeEvent(ev: { type: string; date?: { year?: number; month?: number; day?: number; text?: string }; place?: string } | undefined) {
   if (!ev) return undefined;
@@ -180,12 +181,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         screen: 'focus-select',
         parsing: false,
       });
-      void uploadToServer(data, bytes);
+      // The tree holds living relatives' data: it only leaves the browser for the AI.
+      if (AI_ENABLED) void uploadToServer(data, bytes);
     }).catch((error) => {
       console.error('Failed to parse GEDCOM:', error);
       if (!current()) return;
       set({ parsing: false });
-      alert('Failed to parse GEDCOM file');
+      alert('No s\'ha pogut llegir el fitxer GEDCOM');
     });
   },
 
@@ -215,7 +217,15 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   changeFocus: () => set({ screen: 'focus-select', selectedId: null }),
 
-  selectPerson: (id) => set({ selectedId: id, personPanelOpen: !!id }),
+  selectPerson: (id) => {
+    const { data, viewData, maxGenerations } = get();
+    // Someone outside the focused view (a relative picked in the panel, an AI
+    // link): refocus the tree on them instead of selecting an invisible node.
+    if (id && data?.individuals.has(id) && viewData && !viewData.individuals.has(id)) {
+      set({ focusId: id, viewData: extractSubgraph(data, id, maxGenerations) });
+    }
+    set({ selectedId: id, personPanelOpen: !!id });
+  },
 
   togglePersonPanel: () => set((s) => ({ personPanelOpen: !s.personPanelOpen })),
 

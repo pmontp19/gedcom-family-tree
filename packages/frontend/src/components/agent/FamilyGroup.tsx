@@ -22,7 +22,7 @@ interface FamilyGroupProps {
 function PersonRow({ person }: { person: PersonRef }) {
   const years = person.birth_year && person.death_year
     ? `${person.birth_year}–${person.death_year}`
-    : person.birth_year ? `b. ${person.birth_year}` : '';
+    : person.birth_year ? `n. ${person.birth_year}` : '';
   return (
     <div className="flex justify-between text-sm">
       <span className="font-medium">{person.name}</span>
@@ -38,21 +38,21 @@ export function FamilyGroup({ props }: FamilyGroupProps) {
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">
-          Family {marriage_year ? `(m. ${marriage_year})` : ''}
+          Família {marriage_year ? `(cas. ${marriage_year})` : ''}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground font-medium">Parents</p>
+          <p className="text-xs text-muted-foreground font-medium">Pares</p>
           {father && <PersonRow person={father} />}
           {mother && <PersonRow person={mother} />}
-          {!father && !mother && <p className="text-sm text-muted-foreground">Unknown</p>}
+          {!father && !mother && <p className="text-sm text-muted-foreground">Desconeguts</p>}
         </div>
         {children.length > 0 && (
           <>
             <Separator />
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Children ({children.length})</p>
+              <p className="text-xs text-muted-foreground font-medium">Fills ({children.length})</p>
               {children.map(child => <PersonRow key={child.id} person={child} />)}
             </div>
           </>

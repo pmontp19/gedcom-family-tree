@@ -170,6 +170,20 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     cullNodes(appRef.current, nodeContainersRef.current, graph, transform);
   }, [graph, detailLevel, themeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Sharp text when zoomed in ────────────────────────────────────────────
+  // Text rasterises at screen resolution and blurs once the world scales up.
+  // Re-rasterise per zoom bucket (1×, 2×, 3×), not per frame.
+  const zoomBucket = Math.min(3, Math.max(1, Math.ceil(transform.k - 0.05)));
+  useEffect(() => {
+    if (!readyRef.current || !worldRef.current) return;
+    const resolution = (window.devicePixelRatio || 1) * zoomBucket;
+    const visit = (c: Container) => {
+      if (c instanceof Text) { if (c.resolution !== resolution) c.resolution = resolution; }
+      else c.children.forEach(visit);
+    };
+    visit(worldRef.current);
+  }, [zoomBucket, graph, detailLevel, themeId]);
+
   // ─── Update selection highlight ───────────────────────────────────────────
   // Only the old and new selection change; a rebuild already drew the rest.
   const prevSelectedRef = useRef(selectedId);

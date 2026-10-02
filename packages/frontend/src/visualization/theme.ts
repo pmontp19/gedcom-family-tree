@@ -80,7 +80,7 @@ const DARK: TreeTheme = {
   sexColors: DEFAULT_SEX_COLORS,
 };
 
-// "Piugpelat Heritage": derived from the hand-painted family tree.
+// "Puigpelat Heritage": derived from the hand-painted family tree.
 // Parchment, taupe frames, crimson ink names, sepia dates, branch edges.
 const HERITAGE: TreeTheme = {
   id: 'heritage',

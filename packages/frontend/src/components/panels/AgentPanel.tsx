@@ -45,21 +45,23 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
             variant="ghost"
             size="icon"
             onClick={onClose}
+            aria-label="Enrere"
             className="md:hidden h-9 w-9"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <Bot className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-sm">Ask AI</span>
+          <span className="font-medium text-sm">Pregunta a la IA</span>
         </div>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={clear} className="text-xs h-8">
-            Clear
+            Esborra
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
+            aria-label="Tanca"
             className="hidden md:flex h-8 w-8"
           >
             <X className="h-4 w-4" />
@@ -73,8 +75,8 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-8 space-y-1">
               <Bot className="h-8 w-8 mx-auto mb-3 opacity-30" />
-              <p>Ask about your ancestors</p>
-              <p className="text-xs opacity-60">Try: "Tell me about John Smith"</p>
+              <p>Pregunta pels teus avantpassats</p>
+              <p className="text-xs opacity-60">Prova: "Parla'm de Joan Soler"</p>
             </div>
           )}
 
@@ -108,7 +110,7 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
 
           {isStreaming && (
             <div className="flex justify-start">
-              <div className="text-xs text-muted-foreground animate-pulse">Thinking…</div>
+              <div className="text-xs text-muted-foreground animate-pulse">Pensant…</div>
             </div>
           )}
           <div ref={bottomRef} />
@@ -121,13 +123,14 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about your family tree…"
+          placeholder="Pregunta sobre el teu arbre…"
           disabled={isStreaming}
           className="text-sm"
         />
         <Button
           size="icon"
           onClick={handleSend}
+          aria-label="Envia"
           disabled={isStreaming || !input.trim()}
           className="shrink-0 h-11 w-11 md:h-10 md:w-10"
         >
