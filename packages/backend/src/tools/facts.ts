@@ -39,7 +39,7 @@ export function factsTools(data: SerializedGedcomData) {
           death_place: ind.death?.place ?? null,
           death_year: ind.death?.date?.year ?? null,
           events_count: ind.events.length,
-          is_in_family_as_child: !!ind.famc,
+          is_in_family_as_child: ind.famc.length > 0,
           families_as_spouse: ind.fams.length,
         };
       },
