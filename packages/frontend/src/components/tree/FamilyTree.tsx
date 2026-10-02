@@ -13,6 +13,8 @@ import { PixiTree } from './PixiTree';
 interface FamilyTreeProps {
   data: GedcomData;
   selectedId?: string;
+  /** Who the view was built around: the first view centres on them when the tree doesn't fit. */
+  focusId?: string;
   onSelect?: (individual: Individual) => void;
   themeId?: ThemeId;
 }
@@ -23,20 +25,25 @@ export interface FamilyTreeRef {
 
 export type DetailLevel = 'full' | 'simple' | 'dot';
 
+const READABLE_SCALE = 0.5;
+
 function getDetailLevel(k: number): DetailLevel {
-  if (k >= 0.5) return 'full';
+  if (k >= READABLE_SCALE) return 'full';
   if (k >= 0.15) return 'simple';
   return 'dot';
 }
 
 export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
-  function FamilyTree({ data, selectedId, onSelect, themeId }, ref) {
+  function FamilyTree({ data, selectedId, focusId, onSelect, themeId }, ref) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
     const [layoutPending, setLayoutPending] = useState(true);
     const zoomBehaviorRef = useRef<ReturnType<typeof zoom<HTMLDivElement, unknown>> | null>(null);
     const { runLayout } = useLayoutWorker();
+    // Read by the first fit only; a new focus always comes with a new graph.
+    const focusIdRef = useRef(focusId);
+    useEffect(() => { focusIdRef.current = focusId; });
 
     // Reset layout state when the data changes (during render, not in an effect)
     const [prevData, setPrevData] = useState(data);
@@ -67,6 +74,9 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
           const hiddenFamGroups = new Map<string, string[]>();
           for (const node of rawGraph.nodes) {
             if (node.type !== 'individual' || !node.data) continue;
+            // Parents already on screen take that row; an extra (adoptive,
+            // duplicate) parent family stays reachable from the person panel.
+            if (node.data.famc.some(f => data.families.has(f))) continue;
             for (const famc of node.data.famc) {
               if (famc && !data.families.get(famc)) {
                 const group = hiddenFamGroups.get(famc) ?? [];
@@ -196,13 +206,18 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       };
       container.addEventListener('wheel', onWheel, { passive: false });
 
-      // Fit to container on initial load
+      // First view: fit the tree, but never below the zoom where names show
+      // (a phone would otherwise open on blank cards). When that doesn't fit,
+      // centre on the focus person; "Ajusta la vista" still shows everything.
       if (individualNodes.length > 0) {
-        const scale = Math.max(fitScale, MIN_SCALE);
-        const centerX = (cw - bounds.width * scale) / 2 - bounds.minX * scale;
-        const centerY = (ch - bounds.height * scale) / 2 - bounds.minY * scale;
-
-        sel.call(zoomBehavior.transform, zoomIdentity.translate(centerX, centerY).scale(scale));
+        const scale = Math.min(1, Math.max(fitScale, MIN_SCALE, READABLE_SCALE));
+        const focus = scale > fitScale ? individualNodes.find(n => n.id === focusIdRef.current) : undefined;
+        const cx = focus?.x ?? bounds.minX + bounds.width / 2;
+        const cy = focus?.y ?? bounds.minY + bounds.height / 2;
+        // zoom.transform skips the translate extent; clamp now, or the first
+        // pan would snap the view back inside it.
+        const t = zoomIdentity.translate(cw / 2 - cx * scale, ch / 2 - cy * scale).scale(scale);
+        sel.call(zoomBehavior.transform, zoomBehavior.constrain()(t, [[0, 0], [cw, ch]], zoomBehavior.translateExtent()));
       }
 
       return () => {
@@ -223,7 +238,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
         <div className="flex items-center justify-center h-full text-muted-foreground">
           <div className="flex flex-col items-center gap-2">
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-            <span>Computing layout…</span>
+            <span>Calculant la disposició…</span>
           </div>
         </div>
       );
@@ -232,7 +247,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     if (!graph || graph.nodes.length === 0) {
       return (
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          No data to display
+          No hi ha dades per mostrar
         </div>
       );
     }

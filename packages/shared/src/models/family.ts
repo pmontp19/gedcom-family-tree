@@ -1,4 +1,4 @@
-import type { Event } from './event.js';
+import type { Event, Citation } from './event.js';
 
 export interface Family {
   id: string;
@@ -9,7 +9,7 @@ export interface Family {
   divorce?: Event;
   events: Event[];
   notes: string[];
-  sources: string[];
+  sources: Citation[];
   customTags: Map<string, string>;
 }
 

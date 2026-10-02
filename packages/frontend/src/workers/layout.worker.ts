@@ -24,6 +24,6 @@ self.onmessage = (e: MessageEvent<LayoutRequest>) => {
     y: n.y ?? 0,
   }));
 
-  const response: LayoutResponse = { type: 'layout-result', positions };
+  const response: LayoutResponse = { type: 'layout-result', id: e.data.id, positions };
   self.postMessage(response);
 };

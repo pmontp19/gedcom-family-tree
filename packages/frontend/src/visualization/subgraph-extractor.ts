@@ -12,6 +12,9 @@ export function extractSubgraph(
 ): GedcomData {
   const result = createGedcomData();
   result.header = data.header;
+  // Records people point at; shared, not filtered, so citations still resolve.
+  result.sources = data.sources;
+  result.notes = data.notes;
 
   const visitedInds = new Set<string>();
   const visitedFams = new Set<string>();

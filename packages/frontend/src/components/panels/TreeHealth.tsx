@@ -22,8 +22,8 @@ const SEVERITY_STYLE: Record<string, string> = {
 
 const SEVERITY_LABEL: Record<string, string> = {
   error: 'Errors',
-  warning: 'Warnings',
-  info: 'Recommendations',
+  warning: 'Avisos',
+  info: 'Recomanacions',
 };
 
 function RuleRow({ group }: { group: GedlintGroup }) {
@@ -54,13 +54,13 @@ function RuleRow({ group }: { group: GedlintGroup }) {
         <div className="px-3 pb-3 pl-9 space-y-2 text-sm text-muted-foreground">
           {group.why && (
             <p>
-              <span className="font-semibold text-foreground">Why. </span>
+              <span className="font-semibold text-foreground">Per què. </span>
               {group.why}
             </p>
           )}
           {group.remedy && (
             <p>
-              <span className="font-semibold text-foreground">Remedy. </span>
+              <span className="font-semibold text-foreground">Solució. </span>
               {group.remedy}
             </p>
           )}
@@ -77,7 +77,7 @@ export function TreeHealth() {
     return (
       <Button variant="outline" size="sm" disabled className="flex items-center gap-1.5">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="hidden sm:inline">Checking…</span>
+        <span className="hidden sm:inline">Comprovant…</span>
       </Button>
     );
   }
@@ -97,17 +97,17 @@ export function TreeHealth() {
           className={`flex items-center gap-1.5 ${healthy ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/40' : errors > 0 ? 'text-destructive border-destructive/40' : 'text-amber-600 dark:text-amber-400 border-amber-500/40'}`}
         >
           {healthy ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-          <span className="hidden sm:inline">Tree Health</span>
+          <span className="hidden sm:inline">Salut de l'arbre</span>
           <span className="text-xs font-semibold tabular-nums">
-            {healthy ? 'Healthy' : `${errors + warnings}`}
+            {healthy ? 'Correcte' : `${errors + warnings}`}
           </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Tree Health</DialogTitle>
+          <DialogTitle>Salut de l'arbre</DialogTitle>
           <DialogDescription>
-            gedlint checked the GEDCOM file for structural errors, suspicious data and upgrade notes.
+            gedlint ha revisat el fitxer GEDCOM a la recerca d'errors d'estructura, dades sospitoses i notes d'actualització.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,7 +125,7 @@ export function TreeHealth() {
 
         {lintResult.groups.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No issues found. This file is clean.
+            No s'ha trobat cap problema. El fitxer és correcte.
           </p>
         ) : (
           <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-1">

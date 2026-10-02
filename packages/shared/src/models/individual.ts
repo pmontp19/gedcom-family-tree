@@ -1,4 +1,4 @@
-import type { Event } from './event.js';
+import type { Event, Citation } from './event.js';
 
 /**
  * One OBJE FILE. `file` is the raw GEDCOM reference (a percent-encoded
@@ -32,7 +32,7 @@ export interface Individual {
   famc: string[];  // Families where child (adoption, etc.)
   events: Event[];
   notes: string[];
-  sources: string[];
+  sources: Citation[];
   media: MediaFile[];  // OBJE: photos and documents
   customTags: Map<string, string>;
   rin?: string;
@@ -72,9 +72,10 @@ export function getDisplayName(ind: Individual): string {
 export function getLifeYears(ind: Individual): string {
   const birthYear = ind.birth?.date?.year;
   const deathYear = ind.death?.date?.year;
-  if (birthYear && deathYear) return `${birthYear} - ${deathYear}`;
-  if (birthYear) return `b. ${birthYear}`;
-  if (deathYear) return `d. ${deathYear}`;
+  // Catalan: n. (naixement), m. (mort).
+  if (birthYear && deathYear) return `${birthYear}–${deathYear}`;
+  if (birthYear) return `n. ${birthYear}`;
+  if (deathYear) return `m. ${deathYear}`;
   return '';
 }
 

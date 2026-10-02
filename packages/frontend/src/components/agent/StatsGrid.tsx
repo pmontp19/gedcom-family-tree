@@ -16,7 +16,7 @@ export function StatsGrid({ props }: StatsGridProps) {
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Statistics</CardTitle>
+        <CardTitle className="text-sm">Estadístiques</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-3">

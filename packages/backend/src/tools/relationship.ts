@@ -20,30 +20,32 @@ function buildAncestorMap(data: SerializedGedcomData, id: string, maxGen = 10): 
   return map;
 }
 
-function describeRelationship(genA: number, genB: number): string {
-  if (genA === 0 && genB === 1) return 'parent';
-  if (genA === 1 && genB === 0) return 'child';
+/** "great-" repeated, then "Nx great-" once it gets hard to count. */
+function greats(n: number): string {
+  return n <= 0 ? '' : n <= 2 ? 'great-'.repeat(n) : `${n}x great-`;
+}
+
+function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
+}
+
+/**
+ * What A is to B, given how many generations each sits below their closest
+ * common ancestor (0 means that person is the ancestor).
+ */
+export function describeRelationship(genA: number, genB: number): string {
+  if (genA === 0 && genB === 0) return 'same person';
+  if (genA === 0) return genB === 1 ? 'parent' : `${greats(genB - 2)}grandparent`;
+  if (genB === 0) return genA === 1 ? 'child' : `${greats(genA - 2)}grandchild`;
   if (genA === 1 && genB === 1) return 'sibling';
-  if (genA === 0 && genB === 2) return 'grandparent';
-  if (genA === 2 && genB === 0) return 'grandchild';
-  if (genA === 1 && genB === 2) return 'aunt/uncle';
-  if (genA === 2 && genB === 1) return 'niece/nephew';
-  if (genA === 2 && genB === 2) return '1st cousin';
-  if (genA === 3 && genB === 3) return '2nd cousin';
-  if (genA === 4 && genB === 4) return '3rd cousin';
+  if (genA === 1) return `${greats(genB - 2)}aunt/uncle`;
+  if (genB === 1) return `${greats(genA - 2)}niece/nephew`;
 
-  const minGen = Math.min(genA, genB);
-  const diff = Math.abs(genA - genB);
-
-  if (minGen >= 2) {
-    const cousinNum = minGen - 1;
-    const removed = diff;
-    const suffix = cousinNum === 1 ? '1st' : cousinNum === 2 ? '2nd' : cousinNum === 3 ? '3rd' : `${cousinNum}th`;
-    if (removed === 0) return `${suffix} cousin`;
-    return `${suffix} cousin ${removed}x removed`;
-  }
-
-  return `distant relative (${genA} up, ${genB} down)`;
+  const cousin = `${ordinal(Math.min(genA, genB) - 1)} cousin`;
+  const removed = Math.abs(genA - genB);
+  return removed === 0 ? cousin : `${cousin} ${removed}x removed`;
 }
 
 function buildPathToAncestor(
@@ -121,7 +123,8 @@ export function relationshipTools(data: SerializedGedcomData) {
           gen_from_b: bestGenB,
           path: fullPath.map((ind, i) => ({
             name: ind.name?.full ?? ind.id,
-            relation_to_next: i < fullPath.length - 1 ? 'ancestor' : null,
+            // Up from A to the common ancestor, then down to B.
+            relation_to_next: i >= fullPath.length - 1 ? null : i < pathA.length - 1 ? 'parent' : 'child',
           })),
         };
       },

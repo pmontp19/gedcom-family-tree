@@ -29,10 +29,12 @@ export interface NodePosition {
 
 export interface LayoutRequest {
   type: 'layout';
+  id: number;
   graph: SerializableGraphData;
 }
 
 export interface LayoutResponse {
   type: 'layout-result';
+  id: number;
   positions: NodePosition[];
 }

@@ -15,6 +15,11 @@ export function buildTree(tokens: Token[]): TreeNode[] {
   for (const token of tokens) {
     // Handle CONT and CONC: merge into parent data, don't create child nodes
     if (token.tag === 'CONT' || token.tag === 'CONC') {
+      // The parent is the open node one level up, not whatever was opened last:
+      // `1 NOTE` / `2 SOUR` / `2 CONT` continues the NOTE.
+      while (stack.length > 0 && stack[stack.length - 1].level >= token.level) {
+        stack.pop();
+      }
       if (stack.length > 0) {
         const parent = stack[stack.length - 1];
         const fragment = token.data || '';

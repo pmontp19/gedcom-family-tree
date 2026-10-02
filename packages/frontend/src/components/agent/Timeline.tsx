@@ -14,6 +14,22 @@ interface TimelineProps {
   };
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  Birth: 'Naixement',
+  Death: 'Defunció',
+  Marriage: 'Casament',
+  Divorce: 'Divorci',
+  Residence: 'Residència',
+  Occupation: 'Ofici',
+  Education: 'Estudis',
+  Immigration: 'Immigració',
+  Emigration: 'Emigració',
+  Baptism: 'Baptisme',
+  Burial: 'Enterrament',
+  Census: 'Cens',
+  Military: 'Servei militar',
+};
+
 const EVENT_ICONS: Record<string, string> = {
   Birth: '🟢',
   Death: '⚫',
@@ -36,7 +52,7 @@ export function Timeline({ props }: TimelineProps) {
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Timeline: {name}</CardTitle>
+        <CardTitle className="text-sm">Cronologia: {name}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative pl-4 space-y-3">
@@ -47,7 +63,7 @@ export function Timeline({ props }: TimelineProps) {
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
                   <span>{EVENT_ICONS[ev.type] ?? '📌'}</span>
-                  <span className="font-medium">{ev.type}</span>
+                  <span className="font-medium">{EVENT_LABELS[ev.type] ?? ev.type}</span>
                   {ev.year && <span className="text-muted-foreground text-xs">{ev.year}</span>}
                 </div>
                 {ev.place && <p className="text-muted-foreground text-xs ml-5">📍 {ev.place}</p>}

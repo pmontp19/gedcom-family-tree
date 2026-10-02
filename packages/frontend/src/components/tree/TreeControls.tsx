@@ -16,7 +16,8 @@ export function TreeControls({ onFit }: TreeControlsProps) {
         variant="outline"
         size="icon"
         onClick={onFit}
-        title="Reset View"
+        title="Ajusta la vista"
+        aria-label="Ajusta la vista"
         className="h-11 w-11 md:h-10 md:w-10 rounded-full"
       >
         <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />

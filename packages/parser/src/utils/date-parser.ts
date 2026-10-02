@@ -6,12 +6,23 @@ export const formatGedcomDate = formatGedcomDateModel;
 
 const QUALIFIERS = ['ABT', 'EST', 'CAL', 'BEF', 'AFT', 'BET', 'FROM', 'TO', 'AND'];
 
+// Calendar escapes: 5.5.1 `@#DJULIAN@`, 7.0 bare `JULIAN`. Julian and
+// Gregorian years are comparable, so they are dropped and parsing goes on.
+const JULIAN_GREGORIAN = /@#D(?:JULIAN|GREGORIAN)@|\b(?:JULIAN|GREGORIAN)\b/gi;
+// Hebrew and French republican years are not; keep those dates as text.
+const OTHER_CALENDAR = /@#D(?:HEBREW|FRENCH R|ROMAN|UNKNOWN)@|\b(?:HEBREW|FRENCH_R)\b/i;
+
 export function parseDate(dateStr: string): GedcomDate {
   if (!dateStr || dateStr.trim() === '') {
     return {};
   }
+  if (OTHER_CALENDAR.test(dateStr)) {
+    return { text: dateStr };
+  }
 
-  const parts = dateStr.trim().split(/\s+/);
+  // `INT <date> (<phrase>)` is an interpreted date: keep the date, drop the phrase.
+  const cleaned = dateStr.replace(JULIAN_GREGORIAN, ' ').replace(/^\s*INT\s+/i, '').replace(/\(.*\)\s*$/, '');
+  const parts = cleaned.trim().split(/\s+/);
   const result: GedcomDate = {};
   let index = 0;
 
@@ -54,8 +65,9 @@ export function parseDate(dateStr: string): GedcomDate {
     index++;
   }
 
-  // Handle BET ... AND ... range
-  if (result.qualifier === 'BET' && parts[index]?.toUpperCase() === 'AND') {
+  // Handle BET ... AND ... and FROM ... TO ... ranges
+  const closer = result.qualifier === 'BET' ? 'AND' : result.qualifier === 'FROM' ? 'TO' : undefined;
+  if (closer && parts[index]?.toUpperCase() === closer) {
     index++;
     const endDate = parseDate(parts.slice(index).join(' '));
     result.endDate = endDate;
