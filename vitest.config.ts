@@ -8,11 +8,12 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     // Test against source, so a fresh clone needs no build first.
-    alias: {
-      '@gedcom/shared': pkg('shared/src/index.ts'),
-      '@gedcom/parser': pkg('parser/src/index.ts'),
-      '@': pkg('frontend/src'),
-    },
+    alias: [
+      { find: '@gedcom/shared/story', replacement: pkg('shared/src/models/story.ts') },
+      { find: '@gedcom/shared', replacement: pkg('shared/src/index.ts') },
+      { find: '@gedcom/parser', replacement: pkg('parser/src/index.ts') },
+      { find: '@', replacement: pkg('frontend/src') },
+    ],
   },
   test: {
     // Node by default; a test that needs a DOM opts in with `@vitest-environment jsdom`.

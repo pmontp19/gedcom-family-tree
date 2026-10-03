@@ -21,7 +21,7 @@ export function StoryCard({ props }: StoryCardProps) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const story = parseStory(await res.text());
       const { saveStory, playStory } = useTreeStore.getState();
-      saveStory(story);
+      await saveStory(story);
       playStory(story);
       setState('idle');
     } catch (err) {

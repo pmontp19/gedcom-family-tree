@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Imported as `@gedcom/shared/story`, not from the package root: zod would
+// otherwise ride along into every bundle that touches shared, workers included.
+
 /**
  * A story: a guided walk through the tree, one step at a time. Each step is a
  * piece of narrative beside a "stage" that shows what the text talks about.
@@ -15,6 +18,21 @@ const storyMedia = z.object({
   file: z.string().optional().describe('OBJE FILE reference exactly as in the tree'),
   src: z.string().optional().describe('Direct image URL, when the image is not in the tree'),
   caption: z.string().optional(),
+});
+
+/**
+ * Map backgrounds. ICGC layers: the topographic map covers the world, the
+ * orthophotos only Catalonia; the 1945-46 and 1956-57 ones are the American
+ * flights, the countryside as the family knew it.
+ */
+export const STORY_BASEMAPS = ['topografic', 'orto', 'orto-1945', 'orto-1956', 'osm'] as const;
+
+const storyPlace = z.object({
+  name: z.string(),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  year: z.number().int().optional(),
+  label: z.string().optional().describe('What happened here: "Neix Josep"'),
 });
 
 const stage = z.discriminatedUnion('kind', [
@@ -33,6 +51,13 @@ const stage = z.discriminatedUnion('kind', [
     title: z.string(),
     page: z.string().optional(),
     excerpt: z.string().optional().describe('Transcribed or summarised passage'),
+  }),
+  z.object({
+    kind: z.literal('map'),
+    places: z.array(storyPlace).min(1).describe('Coordinates from geocode_places'),
+    route: z.boolean().default(false).describe('Join the places in order: a migration'),
+    basemap: z.enum(STORY_BASEMAPS).default('topografic')
+      .describe('orto-1945 / orto-1956: historical aerial photos, Catalonia only, zoom in on one place'),
   }),
 ]);
 
@@ -64,6 +89,8 @@ export type Story = z.output<typeof storySchema>;
 export type StoryStep = Story['steps'][number];
 export type StoryStage = StoryStep['stage'];
 export type StoryMedia = z.output<typeof storyMedia>;
+export type StoryPlace = z.output<typeof storyPlace>;
+export type StoryBasemap = typeof STORY_BASEMAPS[number];
 
 export function createStory(draft: StoryDraft): Story {
   return storySchema.parse({

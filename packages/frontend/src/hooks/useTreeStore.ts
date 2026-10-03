@@ -1,9 +1,12 @@
 import { create } from 'zustand';
-import type { GedcomData, Individual, Family, Event, Story } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
+import type { Story } from '@gedcom/shared/story';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
-import * as storyStorage from '@/services/stories';
+
+// Stories validate with zod: load that only once a tree is open, not with the upload screen.
+const storyStorage = () => import('@/services/stories');
 import { AI_ENABLED, API_URL } from '@/config';
 
 function serializeEvent(ev: Event | undefined) {
@@ -149,8 +152,8 @@ interface TreeState {
   selectPerson: (id: string | null) => void;
   togglePersonPanel: () => void;
   clear: () => void;
-  saveStory: (story: Story) => void;
-  deleteStory: (id: string) => void;
+  saveStory: (story: Story) => Promise<void>;
+  deleteStory: (id: string) => Promise<void>;
   playStory: (story: Story | null) => void;
 }
 
@@ -198,9 +201,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         selectedId: null,
         screen: 'focus-select',
         parsing: false,
-        stories: storyStorage.loadStories(filename),
+        stories: [],
         playingStory: null,
       });
+      void storyStorage().then((m) => { if (current()) set({ stories: m.loadStories(filename) }); });
       // The tree holds living relatives' data: it only leaves the browser for the AI.
       if (AI_ENABLED) void uploadToServer(data, bytes);
     }).catch((error) => {
@@ -270,14 +274,16 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     });
   },
 
-  saveStory: (story) => {
+  saveStory: async (story) => {
     const { filename } = get();
-    if (filename) set({ stories: storyStorage.saveStory(filename, story) });
+    const m = await storyStorage();
+    if (filename && filename === get().filename) set({ stories: m.saveStory(filename, story) });
   },
 
-  deleteStory: (id) => {
+  deleteStory: async (id) => {
     const { filename } = get();
-    if (filename) set({ stories: storyStorage.deleteStory(filename, id) });
+    const m = await storyStorage();
+    if (filename && filename === get().filename) set({ stories: m.deleteStory(filename, id) });
   },
 
   playStory: (story) => set({ playingStory: story }),

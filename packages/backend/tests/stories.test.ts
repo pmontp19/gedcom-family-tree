@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseGedcom } from '../../parser/src/index.js';
-import { storyDraftSchema, type SerializedGedcomData } from '@gedcom/shared';
+import type { SerializedGedcomData } from '@gedcom/shared';
+import { storyDraftSchema } from '@gedcom/shared/story';
 import { checkStory, getStory, storyTools } from '../src/tools/stories.js';
 
 const DEMO_FILE = join(dirname(fileURLToPath(import.meta.url)), '../../../demo-catala.ged');

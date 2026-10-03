@@ -58,7 +58,9 @@ app.post('/api/chat', async (c) => {
           'Write the story in Catalan, 4 to 8 steps in chronological order, each with a short warm narrative of 2 or 3 paragraphs. ' +
           'Use only facts from the tree; anything uncertain or family tradition goes in the step notes, never stated as fact. ' +
           'Vary the stages: the tree when people meet or are born, a document when a source backs the step (quote its page), ' +
-          'photos when the person has media. If save_story returns errors, fix them and call it again.',
+          'photos when the person has media, a map (coordinates from geocode_places) when the family moves, with route for a migration. ' +
+          'For a single Catalan village before 1960, a map with the orto-1945 or orto-1956 basemap shows it as the family saw it. ' +
+          'If save_story returns errors, fix them and call it again.',
         'Be concise in text; let the components carry the data.',
       ],
     }),

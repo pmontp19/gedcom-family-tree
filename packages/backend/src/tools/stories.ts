@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { SerializedGedcomData, Story } from '@gedcom/shared';
-import { createStory, storyDraftSchema, storyPersonIds } from '@gedcom/shared';
+import type { SerializedGedcomData } from '@gedcom/shared';
+import { createStory, storyDraftSchema, storyPersonIds, type Story } from '@gedcom/shared/story';
 
 // Saved stories wait here until the browser fetches them: the story travels
 // once, as the tool input, instead of the model writing it out a second time.
