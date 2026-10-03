@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, X, Bot, ChevronLeft } from 'lucide-react';
+import { API_URL } from '@/config';
 
 interface AgentPanelProps {
   onClose: () => void;
@@ -15,7 +16,7 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { messages, isStreaming, send, clear } = useChatUI({
-    api: 'http://localhost:3001/api/chat',
+    api: `${API_URL}/api/chat`,
   });
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export function AgentPanel({ onClose }: AgentPanelProps) {
               <Bot className="h-8 w-8 mx-auto mb-3 opacity-30" />
               <p>Pregunta pels teus avantpassats</p>
               <p className="text-xs opacity-60">Prova: "Parla'm de Joan Soler"</p>
+              <p className="text-xs opacity-60">o "Fes una història de com va arribar la família a la ciutat"</p>
             </div>
           )}
 

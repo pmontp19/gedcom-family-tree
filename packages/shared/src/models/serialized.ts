@@ -3,8 +3,9 @@
  * Used for communication between frontend and backend
  */
 
-import type { Event } from './event.js';
-import type { Name } from './individual.js';
+import type { Event, Citation } from './event.js';
+import type { Name, MediaFile } from './individual.js';
+import type { Source } from './gedcom-data.js';
 
 export interface SerializedIndividual {
   id: string;
@@ -17,6 +18,9 @@ export interface SerializedIndividual {
   famc: string[];
   events: Event[];
   notes: string[];
+  sources?: Citation[];
+  /** File references only: the bytes stay in the browser. */
+  media?: Pick<MediaFile, 'file' | 'title'>[];
 }
 
 export interface SerializedFamily {
@@ -32,6 +36,7 @@ export interface SerializedFamily {
 export interface SerializedGedcomData {
   individuals: Record<string, SerializedIndividual>;
   families: Record<string, SerializedFamily>;
+  sources?: Record<string, Source>;
 }
 
 // Lean person reference for tool results
