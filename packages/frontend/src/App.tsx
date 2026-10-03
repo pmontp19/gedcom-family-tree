@@ -5,6 +5,7 @@ import type { FamilyTreeRef } from '@/components/tree/FamilyTree';
 import { FileUpload, PersonPanel, TreeHealth } from '@/components/panels';
 import { FocusSelector } from '@/components/panels/FocusSelector';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { StoriesDialog } from '@/components/story/StoriesDialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Users, Bot, User, Focus } from 'lucide-react';
@@ -14,6 +15,7 @@ import { AI_ENABLED } from '@/config';
 // Split off the heavy parts: Pixi only loads with the tree view, the AI SDK
 // only when the AI panel opens. The upload screen ships without either.
 const FamilyTree = lazy(() => import('@/components/tree/FamilyTree').then(m => ({ default: m.FamilyTree })));
+const StoryPlayer = lazy(() => import('@/components/story/StoryPlayer').then(m => ({ default: m.StoryPlayer })));
 const AgentPanel = lazy(() => import('@/components/panels/AgentPanel').then(m => ({ default: m.AgentPanel })));
 
 function Spinner() {
@@ -39,7 +41,7 @@ function App() {
   const {
     data, viewData, filename, format, screen, parsing,
     selectedId, focusId, personPanelOpen, loadFile, selectPerson, togglePersonPanel,
-    setFocus, viewAll, changeFocus, clear,
+    setFocus, viewAll, changeFocus, clear, playingStory, playStory,
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
   const agentVisible = AI_ENABLED && agentOpen;
@@ -100,6 +102,16 @@ function App() {
     );
   }
 
+  // Screen: Story. Its own screen, not an overlay: two Pixi apps alive at
+  // once break each other, so the tree view unmounts while a story plays.
+  if (playingStory) {
+    return (
+      <Suspense fallback={<Spinner />}>
+        <StoryPlayer story={playingStory} data={data} themeId={theme} onClose={() => playStory(null)} />
+      </Suspense>
+    );
+  }
+
   // Screen: Tree View
   const displayData = viewData ?? data;
 
@@ -116,16 +128,17 @@ function App() {
           <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
             <FileText className="h-4 w-4" />
             <span className="truncate">{filename}</span>
-            <span className="text-xs bg-muted px-2 py-0.5 rounded">{format}</span>
+            <span className="text-xs bg-muted px-2 py-0.5 rounded whitespace-nowrap">{format}</span>
           </div>
-          <span className="hidden lg:block text-sm text-muted-foreground">
+          <span className="hidden lg:block text-sm text-muted-foreground whitespace-nowrap">
             {displayData.individuals.size} {displayData.individuals.size === 1 ? 'persona' : 'persones'}, {displayData.families.size} {displayData.families.size === 1 ? 'família' : 'famílies'}
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
+          <StoriesDialog />
           <TreeHealth />
           <ThemeToggle theme={theme} onThemeChange={setTheme} />
-          <Button variant="outline" size="sm" onClick={changeFocus} className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={changeFocus} aria-label="Canvia el focus" className="flex items-center gap-1.5">
             <Focus className="h-4 w-4" />
             <span className="hidden sm:inline">Canvia el focus</span>
           </Button>
@@ -145,6 +158,7 @@ function App() {
               variant={agentOpen ? 'default' : 'outline'}
               size="sm"
               onClick={() => setAgentOpen(o => !o)}
+              aria-label="Pregunta a la IA"
               className="flex items-center gap-1.5"
             >
               <Bot className="h-4 w-4" />

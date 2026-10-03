@@ -12,6 +12,8 @@ interface PixiTreeProps {
   graph: GraphData;
   transform: { x: number; y: number; k: number };
   selectedId?: string;
+  /** Drawn like the selection: the people a story step is about. */
+  highlightIds?: ReadonlySet<string>;
   onSelect?: (id: string) => void;
   detailLevel: DetailLevel;
   themeId?: ThemeId;
@@ -72,12 +74,13 @@ function textWidth(text: string, style: TextStyle): number {
   return w;
 }
 
-export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, themeId }: PixiTreeProps) {
+export function PixiTree({ graph, transform, selectedId, highlightIds, onSelect, detailLevel, themeId }: PixiTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const graphRef = useRef(graph);
   const transformRef = useRef(transform);
   const selectedIdRef = useRef(selectedId);
+  const highlightIdsRef = useRef(highlightIds);
   const onSelectRef = useRef(onSelect);
   const detailLevelRef = useRef(detailLevel);
   const themeRef = useRef(themeId);
@@ -87,6 +90,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     graphRef.current = graph;
     transformRef.current = transform;
     selectedIdRef.current = selectedId;
+    highlightIdsRef.current = highlightIds;
     onSelectRef.current = onSelect;
     detailLevelRef.current = detailLevel;
     themeRef.current = themeId;
@@ -138,8 +142,10 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
       rebuildScene(
         app, world, nodeContainersRef.current,
         graphRef.current, detailLevelRef.current,
-        selectedIdRef.current, onSelectRef.current, themeRef.current,
+        markedSet(selectedIdRef.current, highlightIdsRef.current), onSelectRef.current, themeRef.current,
       );
+
+      dimOthers(nodeContainersRef.current, highlightIdsRef.current);
 
       // Apply initial transform
       applyTransform(world, transformRef.current);
@@ -164,7 +170,7 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
     if (!readyRef.current || !appRef.current || !worldRef.current) return;
     rebuildScene(
       appRef.current, worldRef.current, nodeContainersRef.current,
-      graph, detailLevel, selectedId, onSelect, themeId,
+      graph, detailLevel, markedSet(selectedId, highlightIds), onSelect, themeId,
     );
     applyTransform(worldRef.current, transform);
     cullNodes(appRef.current, nodeContainersRef.current, graph, transform);
@@ -185,18 +191,22 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
   }, [zoomBucket, graph, detailLevel, themeId]);
 
   // ─── Update selection highlight ───────────────────────────────────────────
-  // Only the old and new selection change; a rebuild already drew the rest.
-  const prevSelectedRef = useRef(selectedId);
+  // Only the old and new marked cards change; a rebuild already drew the rest.
+  const prevMarkedRef = useRef<ReadonlySet<string>>(new Set());
   useEffect(() => {
     if (!readyRef.current || !worldRef.current) return;
-    const redraw = (id: string | undefined) => {
-      const container = id ? nodeContainersRef.current.get(id) as NodeContainer | undefined : undefined;
-      container?.__redrawCard?.(id === selectedId);
-    };
-    redraw(prevSelectedRef.current);
-    redraw(selectedId);
-    prevSelectedRef.current = selectedId;
-  }, [selectedId, graph, themeId]);
+    const marked = markedSet(selectedId, highlightIds);
+    for (const id of new Set([...prevMarkedRef.current, ...marked])) {
+      (nodeContainersRef.current.get(id) as NodeContainer | undefined)?.__redrawCard?.(marked.has(id));
+    }
+    prevMarkedRef.current = marked;
+  }, [selectedId, highlightIds, graph, themeId]);
+
+  // A story step fades everyone it is not about.
+  useEffect(() => {
+    if (!readyRef.current) return;
+    dimOthers(nodeContainersRef.current, highlightIds);
+  }, [highlightIds, graph, detailLevel, themeId]);
 
   // ─── Apply transform + culling ────────────────────────────────────────────
   useEffect(() => {
@@ -215,13 +225,25 @@ export function PixiTree({ graph, transform, selectedId, onSelect, detailLevel, 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function dimOthers(nodeContainers: Map<string, Container>, highlightIds: ReadonlySet<string> | undefined) {
+  for (const [id, container] of nodeContainers) {
+    container.alpha = !highlightIds?.size || highlightIds.has(id) ? 1 : 0.35;
+  }
+}
+
+function markedSet(selectedId: string | undefined, highlightIds: ReadonlySet<string> | undefined): ReadonlySet<string> {
+  const marked = new Set(highlightIds);
+  if (selectedId) marked.add(selectedId);
+  return marked;
+}
+
 function rebuildScene(
   _app: Application,
   world: Container,
   nodeContainers: Map<string, Container>,
   graph: GraphData,
   detailLevel: DetailLevel,
-  selectedId: string | undefined,
+  marked: ReadonlySet<string>,
   onSelect: ((id: string) => void) | undefined,
   themeId?: ThemeId,
 ) {
@@ -247,7 +269,7 @@ function rebuildScene(
     if (node.type !== 'individual' || !node.data) continue;
     if (node.x === undefined || node.y === undefined) continue;
 
-    const container = createNodeSprite(node, detailLevel, node.id === selectedId, onSelect, theme);
+    const container = createNodeSprite(node, detailLevel, marked.has(node.id), onSelect, theme);
     container.position.set(node.x, node.y);
     world.addChild(container);
     nodeContainers.set(node.id, container);

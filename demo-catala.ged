@@ -1,0 +1,197 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SOUR DEMO
+1 LANG Catalan
+0 @I1@ INDI
+1 NAME Josep /Puig Farré/
+2 GIVN Josep
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 14 MAR 1842
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+2 SOUR @S1@
+3 PAGE Foli 23
+1 OCCU Pagès
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 DEAT
+2 DATE 2 FEB 1901
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+2 SOUR @S3@
+1 NOTE Va treballar les terres del mas de la família tota la vida. Segons la tradició familiar, va plantar les primeres oliveres de la partida del Pla.
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Teresa /Vilaró Coll/
+2 GIVN Teresa
+2 SURN Vilaró
+1 SEX F
+1 BIRT
+2 DATE ABT 1846
+2 PLAC Bellpuig, Lleida, Catalunya
+1 DEAT
+2 DATE 1910
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Ramon /Puig Vilaró/
+2 GIVN Ramon
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 8 SEP 1870
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+2 SOUR @S1@
+3 PAGE Foli 112
+1 OCCU Pagès i paraire
+1 RESI
+2 DATE 1890
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 DEAT
+2 DATE 30 NOV 1932
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Maria /Puig Vilaró/
+2 GIVN Maria
+2 SURN Puig
+1 SEX F
+1 BIRT
+2 DATE 1873
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 FAMC @F1@
+0 @I5@ INDI
+1 NAME Rosa /Solé Gené/
+2 GIVN Rosa
+2 SURN Solé
+1 SEX F
+1 BIRT
+2 DATE 1874
+2 PLAC Mollerussa, Lleida, Catalunya
+1 DEAT
+2 DATE 1940
+2 PLAC Barcelona, Catalunya
+1 FAMS @F2@
+0 @I6@ INDI
+1 NAME Joan /Puig Solé/
+2 GIVN Joan
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 21 JAN 1898
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 EMIG
+2 DATE 1919
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+2 NOTE Marxa a Barcelona a treballar al tèxtil després de la mala collita de 1918.
+1 RESI
+2 DATE 1930
+2 PLAC Barcelona, Catalunya
+2 SOUR @S2@
+3 PAGE Districte V, full 412
+1 OCCU Teixidor
+2 PLAC Barcelona, Catalunya
+1 DEAT
+2 DATE 1965
+2 PLAC Barcelona, Catalunya
+1 FAMC @F2@
+1 FAMS @F3@
+0 @I7@ INDI
+1 NAME Montserrat /Riera Pujol/
+2 GIVN Montserrat
+2 SURN Riera
+1 SEX F
+1 BIRT
+2 DATE 1902
+2 PLAC Sabadell, Barcelona, Catalunya
+1 DEAT
+2 DATE 1979
+2 PLAC Barcelona, Catalunya
+1 FAMS @F3@
+0 @I8@ INDI
+1 NAME Pere /Puig Solé/
+2 GIVN Pere
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 1901
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 FAMC @F2@
+0 @I9@ INDI
+1 NAME Antoni /Puig Riera/
+2 GIVN Antoni
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 3 MAY 1926
+2 PLAC Barcelona, Catalunya
+1 OCCU Mestre
+1 DEAT
+2 DATE 2004
+2 PLAC Girona, Catalunya
+1 FAMC @F3@
+1 FAMS @F4@
+0 @I10@ INDI
+1 NAME Carme /Font Bosch/
+2 GIVN Carme
+2 SURN Font
+1 SEX F
+1 BIRT
+2 DATE 1930
+2 PLAC Girona, Catalunya
+1 DEAT
+2 DATE 2015
+2 PLAC Girona, Catalunya
+1 FAMS @F4@
+0 @I11@ INDI
+1 NAME Jordi /Puig Font/
+2 GIVN Jordi
+2 SURN Puig
+1 SEX M
+1 BIRT
+2 DATE 1956
+2 PLAC Girona, Catalunya
+1 FAMC @F4@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 1868
+2 PLAC Vilanova de Bellpuig, Lleida, Catalunya
+1 CHIL @I3@
+1 CHIL @I4@
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I5@
+1 MARR
+2 DATE 12 FEB 1896
+2 PLAC Mollerussa, Lleida, Catalunya
+1 CHIL @I6@
+1 CHIL @I8@
+0 @F3@ FAM
+1 HUSB @I6@
+1 WIFE @I7@
+1 MARR
+2 DATE 1924
+2 PLAC Barcelona, Catalunya
+1 CHIL @I9@
+0 @F4@ FAM
+1 HUSB @I9@
+1 WIFE @I10@
+1 MARR
+2 DATE 1954
+2 PLAC Girona, Catalunya
+1 CHIL @I11@
+0 @S1@ SOUR
+1 TITL Llibre de baptismes de Vilanova de Bellpuig, 1835-1880
+1 AUTH Arxiu Diocesà de Solsona
+0 @S2@ SOUR
+1 TITL Padró municipal d'habitants de Barcelona, 1930
+1 AUTH Arxiu Municipal de Barcelona
+0 @S3@ SOUR
+1 TITL Registre civil de Vilanova de Bellpuig, defuncions
+1 AUTH Registre Civil
+0 TRLR

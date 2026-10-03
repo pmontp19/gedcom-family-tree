@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { GedcomData, Individual, Family } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Story } from '@gedcom/shared';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
+import * as storyStorage from '@/services/stories';
 import { AI_ENABLED } from '@/config';
 
 function serializeEvent(ev: { type: string; date?: { year?: number; month?: number; day?: number; text?: string }; place?: string } | undefined) {
@@ -128,6 +129,8 @@ interface TreeState {
   lintResult: GedlintResult | null;
   linting: boolean;
   mediaUrls: string[];
+  stories: Story[];
+  playingStory: Story | null;
 
   loadFile: (content: string, filename: string, bytes: ArrayBuffer, media?: Map<string, string>) => void;
   setFocus: (id: string, generations: number) => void;
@@ -136,6 +139,9 @@ interface TreeState {
   selectPerson: (id: string | null) => void;
   togglePersonPanel: () => void;
   clear: () => void;
+  saveStory: (story: Story) => void;
+  deleteStory: (id: string) => void;
+  playStory: (story: Story | null) => void;
 }
 
 export const useTreeStore = create<TreeState>((set, get) => ({
@@ -153,6 +159,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   lintResult: null,
   linting: false,
   mediaUrls: [],
+  stories: [],
+  playingStory: null,
 
   loadFile: (content, filename, bytes, media) => {
     // A newer load supersedes this one; its late results must not land.
@@ -180,6 +188,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         selectedId: null,
         screen: 'focus-select',
         parsing: false,
+        stories: storyStorage.loadStories(filename),
+        playingStory: null,
       });
       // The tree holds living relatives' data: it only leaves the browser for the AI.
       if (AI_ENABLED) void uploadToServer(data, bytes);
@@ -245,6 +255,20 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       lintResult: null,
       linting: false,
       mediaUrls: [],
+      stories: [],
+      playingStory: null,
     });
   },
+
+  saveStory: (story) => {
+    const { filename } = get();
+    if (filename) set({ stories: storyStorage.saveStory(filename, story) });
+  },
+
+  deleteStory: (id) => {
+    const { filename } = get();
+    if (filename) set({ stories: storyStorage.deleteStory(filename, id) });
+  },
+
+  playStory: (story) => set({ playingStory: story }),
 }));
