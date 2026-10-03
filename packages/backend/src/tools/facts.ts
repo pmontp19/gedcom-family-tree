@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { SerializedGedcomData } from '@gedcom/shared';
+import type { Citation, SerializedGedcomData } from '@gedcom/shared';
 import { getSerializedIndividual, toPersonRef } from '@gedcom/shared';
 
 const EVENT_LABELS: Record<string, string> = {
@@ -24,6 +24,15 @@ const EVENT_LABELS: Record<string, string> = {
   RETI: 'Retirement',
 };
 
+/** Citations with the source title resolved, as an author needs them to cite. */
+function cite(data: SerializedGedcomData, citations: Citation[] | undefined) {
+  return (citations ?? []).map(c => ({
+    source_id: c.id ?? null,
+    title: (c.id ? data.sources?.[c.id]?.title : undefined) ?? c.text ?? null,
+    page: c.page ?? null,
+  }));
+}
+
 export function factsTools(data: SerializedGedcomData) {
   return {
     get_individual_detail: tool({
@@ -41,6 +50,9 @@ export function factsTools(data: SerializedGedcomData) {
           events_count: ind.events.length,
           is_in_family_as_child: ind.famc.length > 0,
           families_as_spouse: ind.fams.length,
+          notes: ind.notes,
+          sources: cite(data, ind.sources),
+          media: ind.media ?? [],
         };
       },
     }),
@@ -57,6 +69,8 @@ export function factsTools(data: SerializedGedcomData) {
           year: number | null;
           place: string | null;
           description: string | null;
+          notes?: string[];
+          sources?: ReturnType<typeof cite>;
         }> = [];
 
         // Birth
@@ -66,6 +80,8 @@ export function factsTools(data: SerializedGedcomData) {
             year: ind.birth.date?.year ?? null,
             place: ind.birth.place ?? null,
             description: null,
+            notes: ind.birth.notes,
+            sources: cite(data, ind.birth.sources),
           });
         }
 
@@ -77,7 +93,9 @@ export function factsTools(data: SerializedGedcomData) {
             type: EVENT_LABELS[ev.type] ?? ev.type,
             year: ev.date?.year ?? null,
             place: ev.place ?? null,
-            description: null,
+            description: ev.value ?? null,
+            notes: ev.notes,
+            sources: cite(data, ev.sources),
           });
         }
 
@@ -103,6 +121,8 @@ export function factsTools(data: SerializedGedcomData) {
             year: ind.death.date?.year ?? null,
             place: ind.death.place ?? null,
             description: null,
+            notes: ind.death.notes,
+            sources: cite(data, ind.death.sources),
           });
         }
 

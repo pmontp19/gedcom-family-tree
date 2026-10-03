@@ -6,6 +6,7 @@ import { relationshipTools } from './relationship.js';
 import { factsTools } from './facts.js';
 import { auditTools } from './audit.js';
 import { reportsTools } from './reports.js';
+import { storyTools } from './stories.js';
 import type { ToolSet } from 'ai';
 
 export function createGedcomTools(data: SerializedGedcomData, raw: Buffer | null): ToolSet {
@@ -16,6 +17,7 @@ export function createGedcomTools(data: SerializedGedcomData, raw: Buffer | null
     ...relationshipTools(data),
     ...factsTools(data),
     ...reportsTools(data),
+    ...storyTools(data),
     ...auditTools(raw),
   } as ToolSet;
 }

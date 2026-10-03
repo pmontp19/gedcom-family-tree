@@ -7,6 +7,7 @@ import { pipeJsonRender } from '@json-render/core';
 import { createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { catalog } from './catalog.js';
 import { createGedcomTools } from './tools/index.js';
+import { getStory } from './tools/stories.js';
 import { gedcomStore } from './gedcom-store.js';
 import type { SerializedGedcomData } from '@gedcom/shared';
 
@@ -22,6 +23,11 @@ app.post('/api/upload', async (c) => {
   const famCount = Object.keys(data.families).length;
   console.log(`[gedcom] loaded ${indCount} individuals, ${famCount} families`);
   return c.json({ ok: true, individuals: indCount, families: famCount });
+});
+
+app.get('/api/stories/:id', (c) => {
+  const story = getStory(c.req.param('id'));
+  return story ? c.json(story) : c.json({ error: 'not found' }, 404);
 });
 
 app.post('/api/chat', async (c) => {
@@ -46,6 +52,13 @@ app.post('/api/chat', async (c) => {
         'For questions about origins, where a family came from, or how it moved, call analyze_migration and render a MigrationTimeline.',
         'For questions about file quality, errors, duplicates, or GEDCOM validity, call audit_tree.',
         'Whenever you report a lint rule code, call explain_lint_rule for it and summarise the why and the remedy.',
+        'When asked for a story, a relat or a història about the family, write one for relatives to watch: ' +
+          'gather facts first (get_individual_detail, get_timeline, get_parents, get_children, analyze_migration), ' +
+          'then call save_story and render a StoryCard with the story_id it returns. ' +
+          'Write the story in Catalan, 4 to 8 steps in chronological order, each with a short warm narrative of 2 or 3 paragraphs. ' +
+          'Use only facts from the tree; anything uncertain or family tradition goes in the step notes, never stated as fact. ' +
+          'Vary the stages: the tree when people meet or are born, a document when a source backs the step (quote its page), ' +
+          'photos when the person has media. If save_story returns errors, fix them and call it again.',
         'Be concise in text; let the components carry the data.',
       ],
     }),

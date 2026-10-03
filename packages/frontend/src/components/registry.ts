@@ -8,6 +8,7 @@ import { StatsGrid } from './agent/StatsGrid';
 import { RelationshipPath } from './agent/RelationshipPath';
 import { FamilyGroup } from './agent/FamilyGroup';
 import { MigrationTimeline } from './agent/MigrationTimeline';
+import { StoryCard } from './agent/StoryCard';
 
 export const { registry } = defineRegistry(catalog, {
   components: {
@@ -18,6 +19,7 @@ export const { registry } = defineRegistry(catalog, {
     RelationshipPath,
     FamilyGroup,
     MigrationTimeline,
+    StoryCard,
   },
   actions: {
     navigate_to_person: async (params) => {

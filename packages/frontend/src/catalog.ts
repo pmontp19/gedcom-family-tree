@@ -80,6 +80,15 @@ export const catalog = defineCatalog(schema, {
       }),
       description: 'A family unit',
     },
+    StoryCard: {
+      props: z.object({
+        story_id: z.string(),
+        title: z.string(),
+        subtitle: z.string().nullable(),
+        steps: z.number(),
+      }),
+      description: 'A story saved with save_story, ready to save and watch',
+    },
   },
   actions: {
     navigate_to_person: {

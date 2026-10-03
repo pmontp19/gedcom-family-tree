@@ -1,14 +1,21 @@
 import { create } from 'zustand';
-import type { GedcomData, Individual, Family, Story } from '@gedcom/shared';
+import type { GedcomData, Individual, Family, Event, Story } from '@gedcom/shared';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
 import * as storyStorage from '@/services/stories';
-import { AI_ENABLED } from '@/config';
+import { AI_ENABLED, API_URL } from '@/config';
 
-function serializeEvent(ev: { type: string; date?: { year?: number; month?: number; day?: number; text?: string }; place?: string } | undefined) {
+function serializeEvent(ev: Event | undefined) {
   if (!ev) return undefined;
-  return { type: ev.type, date: ev.date ? { year: ev.date.year, month: ev.date.month, day: ev.date.day, text: ev.date.text } : undefined, place: ev.place };
+  return {
+    type: ev.type,
+    date: ev.date ? { year: ev.date.year, month: ev.date.month, day: ev.date.day, text: ev.date.text } : undefined,
+    place: ev.place,
+    value: ev.value,
+    notes: ev.notes,
+    sources: ev.sources,
+  };
 }
 
 function serializeIndividual(ind: Individual) {
@@ -22,6 +29,8 @@ function serializeIndividual(ind: Individual) {
     famc: ind.famc,
     events: ind.events.map(e => serializeEvent(e)!),
     notes: ind.notes,
+    sources: ind.sources,
+    media: ind.media.map(({ file, title }) => ({ file, title })),
   };
 }
 
@@ -56,9 +65,10 @@ async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
       families: Object.fromEntries(
         Array.from(data.families.entries()).map(([id, fam]) => [id, serializeFamily(fam)])
       ),
+      sources: Object.fromEntries(data.sources),
       raw: toBase64(bytes),
     };
-    await fetch('http://localhost:3001/api/upload', {
+    await fetch(`${API_URL}/api/upload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
