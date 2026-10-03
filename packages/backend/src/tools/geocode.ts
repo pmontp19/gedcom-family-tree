@@ -39,7 +39,7 @@ interface IcgcFeature {
 async function icgc(name: string): Promise<Omit<GeocodedPlace, 'place'> | null> {
   const url = `https://eines.icgc.cat/geocodificador/cerca?text=${encodeURIComponent(name)}&size=5&layers=topo1,topo2`;
   const res = await fetch(url);
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`ICGC HTTP ${res.status}`);
   const { features } = await res.json() as { features: IcgcFeature[] };
   const hit = features.find(f => normalize(f.properties.nom) === normalize(name));
   if (!hit) return null;
@@ -50,12 +50,13 @@ async function icgc(name: string): Promise<Omit<GeocodedPlace, 'place'> | null> 
 // Nominatim's usage policy: an identifying User-Agent, at most one request a second.
 let lastOsm = 0;
 async function osm(place: string): Promise<Omit<GeocodedPlace, 'place'> | null> {
-  const wait = lastOsm + 1000 - Date.now();
-  if (wait > 0) await new Promise(r => setTimeout(r, wait));
-  lastOsm = Date.now();
+  // Reserve the slot before awaiting, so concurrent calls queue up behind it.
+  const slot = Math.max(Date.now(), lastOsm + 1000);
+  lastOsm = slot;
+  if (slot > Date.now()) await new Promise(r => setTimeout(r, slot - Date.now()));
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(place)}`;
   const res = await fetch(url, { headers: { 'User-Agent': 'gedcom-family-tree (genealogy stories)' } });
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`);
   const [hit] = await res.json() as Array<{ lat: string; lon: string; display_name: string }>;
   return hit ? { lat: Number(hit.lat), lon: Number(hit.lon), label: hit.display_name, source: 'osm' } : null;
 }
@@ -69,7 +70,7 @@ async function geocode(place: string): Promise<GeocodedPlace | null> {
     const name = icgcQuery(place);
     found = (name ? await icgc(name) : null) ?? await osm(place);
   } catch (err) {
-    // Offline or a geocoder down: the agent leaves the place off the map.
+    // Offline or a geocoder down: off the map this time, but not cached as unknown.
     console.warn(`[geocode] ${place}:`, err);
     return null;
   }

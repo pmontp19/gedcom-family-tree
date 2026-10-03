@@ -99,6 +99,17 @@ function revokeMedia(urls: string[]) {
   for (const url of urls) URL.revokeObjectURL(url);
 }
 
+/** The browser can refuse to store (quota, private mode): say so, keep the list as it was. */
+function storeOrWarn(write: () => Story[], unchanged: Story[]): Story[] {
+  try {
+    return write();
+  } catch (err) {
+    console.error('Could not save stories:', err);
+    alert("No s'ha pogut desar al navegador. Potser l'espai és ple.");
+    return unchanged;
+  }
+}
+
 // Parser worker singleton
 let parserWorker: Worker | null = null;
 function getParserWorker(): Worker {
@@ -327,13 +338,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   saveStory: async (story) => {
     const { filename } = get();
     const m = await storyStorage();
-    if (filename && filename === get().filename) set({ stories: m.saveStory(filename, story) });
+    if (filename && filename === get().filename) set({ stories: storeOrWarn(() => m.saveStory(filename, story), get().stories) });
   },
 
   deleteStory: async (id) => {
     const { filename } = get();
     const m = await storyStorage();
-    if (filename && filename === get().filename) set({ stories: m.deleteStory(filename, id) });
+    if (filename && filename === get().filename) set({ stories: storeOrWarn(() => m.deleteStory(filename, id), get().stories) });
   },
 
   playStory: (story) => set({ playingStory: story }),

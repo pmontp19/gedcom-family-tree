@@ -23,6 +23,15 @@ describe('story schema', () => {
     expect(storyPersonIds(storyDraftSchema.parse(draft))).toEqual(new Set(['I6', 'I1', 'I3', 'I4']));
   });
 
+  it('only takes https image URLs', () => {
+    const withSrc = (src: string) => storyDraftSchema.safeParse({
+      ...draft, steps: [{ title: 'Foto', body: 'Text', stage: { kind: 'media', items: [{ src }] } }],
+    }).success;
+    expect(withSrc('https://upload.wikimedia.org/a.jpg')).toBe(true);
+    expect(withSrc('http://example.com/a.jpg')).toBe(false);
+    expect(withSrc('javascript:alert(1)')).toBe(false);
+  });
+
   it('rejects a story without steps or with an unknown stage', () => {
     expect(storyDraftSchema.safeParse({ ...draft, steps: [] }).success).toBe(false);
     const bad = { ...draft, steps: [{ title: 'x', body: 'y', stage: { kind: 'video' } }] };

@@ -28,6 +28,18 @@ function basemapLayer(basemap: StoryBasemap): L.Layer {
 
 const ROUTE_COLOR = '#c2410c';
 
+/** Text nodes, not an HTML string: names and labels come from imported files. */
+function tooltip(text: string, label?: string): HTMLElement {
+  const el = document.createElement('div');
+  el.textContent = text;
+  if (label) {
+    const sub = el.appendChild(document.createElement('div'));
+    sub.style.opacity = '.7';
+    sub.textContent = label;
+  }
+  return el;
+}
+
 export function MapStage({ places, route, basemap }: { places: StoryPlace[]; route: boolean; basemap: StoryBasemap }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,7 +55,7 @@ export function MapStage({ places, route, basemap }: { places: StoryPlace[]; rou
     places.forEach((p, i) => {
       const text = [route && places.length > 1 ? `${i + 1}.` : '', p.name, p.year ? `(${p.year})` : ''].filter(Boolean).join(' ');
       L.circleMarker(points[i], { radius: 7, color: '#fff', weight: 2, fillColor: ROUTE_COLOR, fillOpacity: 1 })
-        .bindTooltip(p.label ? `${text}<br><span style="opacity:.7">${p.label}</span>` : text, {
+        .bindTooltip(tooltip(text, p.label), {
           // Alternate sides: consecutive stops are often neighbouring villages.
           permanent: true, direction: i % 2 ? 'bottom' : 'top', offset: [0, i % 2 ? 8 : -8],
         })

@@ -10,10 +10,24 @@ import { createGedcomTools } from './tools/index.js';
 import { getStory } from './tools/stories.js';
 import { gedcomStore } from './gedcom-store.js';
 import type { SerializedGedcomData } from '@gedcom/shared';
+import { z } from 'zod';
+
+const interviewsSchema = z.object({
+  notes: z.record(z.string(), z.array(z.object({ question: z.string().max(500), answer: z.string().max(10_000) }))),
+});
 
 const app = new Hono();
 
 app.use('*', cors({ origin: 'http://localhost:5173' }));
+
+// CORS alone does not stop another site from posting text/plain here without a
+// preflight; only JSON requests, which need one, may write.
+app.use('/api/*', async (c, next) => {
+  if (c.req.method === 'POST' && !c.req.header('content-type')?.startsWith('application/json')) {
+    return c.json({ error: 'expected application/json' }, 415);
+  }
+  await next();
+});
 
 app.post('/api/upload', async (c) => {
   // `raw` is the base64 of the original file bytes, kept for the gedlint audit.
@@ -26,10 +40,11 @@ app.post('/api/upload', async (c) => {
 });
 
 app.post('/api/interviews', async (c) => {
-  const { notes } = await c.req.json() as { notes: NonNullable<SerializedGedcomData['interviews']> };
+  const parsed = interviewsSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: 'invalid interviews' }, 400);
   const data = gedcomStore.get();
   if (!data) return c.json({ error: 'no tree loaded' }, 409);
-  data.interviews = notes;
+  data.interviews = parsed.data.notes;
   return c.json({ ok: true });
 });
 

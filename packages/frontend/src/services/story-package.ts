@@ -88,9 +88,20 @@ export async function readPackage(file: Blob): Promise<OpenedPackage> {
   const tree = JSON.parse(await treeFile.async('string')) as PackageTree;
   if (!Array.isArray(tree.individuals) || !Array.isArray(tree.families)) throw new Error('Invalid tree.json');
 
+  // tree.json comes from someone else's browser: fill what a hand-made one may lack.
   const data = createGedcomData();
-  for (const ind of tree.individuals) data.individuals.set(ind.id, { ...ind, customTags: new Map() });
-  for (const fam of tree.families) data.families.set(fam.id, { ...fam, customTags: new Map() });
+  for (const ind of tree.individuals) {
+    data.individuals.set(ind.id, {
+      ...ind, aliases: ind.aliases ?? [], fams: ind.fams ?? [], famc: ind.famc ?? [], events: ind.events ?? [],
+      notes: ind.notes ?? [], sources: ind.sources ?? [], media: ind.media ?? [], customTags: new Map(),
+    });
+  }
+  for (const fam of tree.families) {
+    data.families.set(fam.id, {
+      ...fam, children: fam.children ?? [], events: fam.events ?? [], notes: fam.notes ?? [],
+      sources: fam.sources ?? [], customTags: new Map(),
+    });
+  }
   for (const src of tree.sources ?? []) data.sources.set(src.id, src);
 
   const media = new Map<string, string>();
@@ -99,11 +110,11 @@ export async function readPackage(file: Blob): Promise<OpenedPackage> {
       if (entry.dir || !IMAGE_RE.test(entry.name)) continue;
       media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
     }
+    attachMedia(data, media);
   } catch (err) {
     // The caller never gets the map, so nobody else can revoke these.
     for (const url of media.values()) URL.revokeObjectURL(url);
     throw err;
   }
-  attachMedia(data, media);
   return { story, data, media };
 }
