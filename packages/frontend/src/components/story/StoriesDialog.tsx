@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { BookOpen, Play, Download, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Play, Download, Trash2, Upload, Package } from 'lucide-react';
 import { useTreeStore } from '@/hooks';
+import type { Story } from '@gedcom/shared/story';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 
 export function StoriesDialog() {
-  const { stories, saveStory, deleteStory, playStory } = useTreeStore();
+  const { stories, data, saveStory, deleteStory, playStory } = useTreeStore();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,6 +20,19 @@ export function StoriesDialog() {
     } catch (err) {
       console.error('Failed to import story:', err);
       setError(`${file.name} no és una història vàlida`);
+    }
+  };
+
+  const share = async (story: Story) => {
+    if (!data) return;
+    try {
+      const [{ buildPackage }, { downloadBlob, slugify }] = await Promise.all([
+        import('@/services/story-package'), import('@/services/stories'),
+      ]);
+      downloadBlob(await buildPackage(story, data), `${slugify(story.title)}.historia.zip`);
+    } catch (err) {
+      console.error('Failed to build story package:', err);
+      setError(`No s'ha pogut crear el paquet de «${story.title}»`);
     }
   };
 
@@ -35,6 +49,7 @@ export function StoriesDialog() {
           <DialogTitle>Històries</DialogTitle>
           <DialogDescription>
             Recorreguts guiats per la família per compartir: relat, arbre, fotos i documents, pas a pas.
+            El paquet per compartir només porta les persones de la història; les vives hi surten anònimes.
           </DialogDescription>
         </DialogHeader>
 
@@ -55,7 +70,10 @@ export function StoriesDialog() {
                 <Button size="sm" onClick={() => { setOpen(false); playStory(story); }} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" /> Mira
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => void import('@/services/stories').then(m => m.exportStory(story))} aria-label={`Exporta ${story.title}`}>
+                <Button variant="ghost" size="icon" onClick={() => void share(story)} aria-label={`Paquet per compartir ${story.title}`} title="Paquet per compartir (.historia.zip)">
+                  <Package className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => void import('@/services/stories').then(m => m.exportStory(story))} aria-label={`Exporta ${story.title}`} title="Exporta la història (.historia.json)">
                   <Download className="h-4 w-4" />
                 </Button>
                 <Button

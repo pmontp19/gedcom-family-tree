@@ -39,12 +39,14 @@ function getInitialTheme(): ThemeId {
 
 function App() {
   const {
-    data, viewData, filename, format, screen, parsing,
+    data, viewData, rawData, filename, format, screen, parsing,
     selectedId, focusId, personPanelOpen, loadFile, selectPerson, togglePersonPanel,
-    setFocus, viewAll, changeFocus, clear, playingStory, playStory,
+    setFocus, viewAll, changeFocus, clear, playingStory, playStory, openPackage,
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
-  const agentVisible = AI_ENABLED && agentOpen;
+  // The AI reads the GEDCOM uploaded with it: a story package has none.
+  const aiAvailable = AI_ENABLED && !!rawData;
+  const agentVisible = aiAvailable && agentOpen;
   const [theme, setTheme] = useState<ThemeId>(getInitialTheme);
   const treeRef = useRef<FamilyTreeRef>(null);
 
@@ -80,7 +82,7 @@ function App() {
               <p className="text-sm text-muted-foreground">Llegint el fitxer GEDCOM…</p>
             </div>
           ) : (
-            <FileUpload onFileLoad={loadFile} />
+            <FileUpload onFileLoad={loadFile} onPackageLoad={openPackage} />
           )}
         </div>
       </div>
@@ -153,7 +155,7 @@ function App() {
               <User className="h-4 w-4" />
             </Button>
           )}
-          {AI_ENABLED && (
+          {aiAvailable && (
             <Button
               variant={agentOpen ? 'default' : 'outline'}
               size="sm"

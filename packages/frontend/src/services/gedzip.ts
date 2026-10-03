@@ -39,7 +39,7 @@ export async function readGedzip(file: Blob): Promise<GedzipContents> {
   return { text: decodeGedcom(bytes), bytes, media };
 }
 
-function decodePath(file: string): string {
+export function decodePath(file: string): string {
   const path = file.replace(/^\.\//, '');
   try {
     return decodeURIComponent(path);
