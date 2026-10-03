@@ -20,7 +20,7 @@ const story = createStory({
 });
 
 describe('isLiving', () => {
-  it('follows the 100-year rule, unknown birth counting as alive', () => {
+  it('follows follows the 100-year rule, unknown birth counting as alive', () => {
     expect(isLiving(data.individuals.get('I11')!, 2026)).toBe(true);
     expect(isLiving(data.individuals.get('I8')!, 2026)).toBe(false); // born 1901
     expect(isLiving(data.individuals.get('I1')!, 2026)).toBe(false); // died
@@ -31,20 +31,13 @@ describe('isLiving', () => {
 describe('storySubset', () => {
   const subset = storySubset(story, data);
 
-  it('keeps only the people the story shows, anonymising the living', () => {
+  it('keeps only the people the story shows, the living as they are', () => {
     expect(subset.individuals.has('I1')).toBe(true); // grandparent of Joan
     expect(subset.individuals.has('I4')).toBe(false); // Joan's aunt: not in any step
-    const jordi = subset.individuals.get('I11')!;
-    expect(jordi.name?.full).toBe('Persona vivent');
-    expect(jordi.birth).toBeUndefined();
-    expect(jordi.famc).toEqual(['F4']); // still joins the tree
+    expect(subset.individuals.get('I11')?.name?.full).toBe('Jordi Puig Font'); // living, shown to family
   });
 
-  it('drops the marriage of a couple with a living spouse, and keeps only cited sources', () => {
-    expect(subset.families.get('F4')?.marriage).toBeDefined(); // Antoni and Carme both died
-    const carme = data.individuals.get('I10')!;
-    const withCarmeAlive = { ...data, individuals: new Map(data.individuals).set('I10', { ...carme, death: undefined, events: [], birth: { type: 'BIRT', date: { year: 1960 } } }) };
-    expect(storySubset(story, withCarmeAlive).families.get('F4')?.marriage).toBeUndefined();
+  it('keeps only cited sources', () => {
     expect([...subset.sources.keys()]).toEqual(['S1']);
   });
 });

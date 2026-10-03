@@ -1,7 +1,7 @@
 // A story package (.historia.zip) carries one story to relatives who do not
 // have the tree: the story, only the part of the tree it shows, and its
-// photos. Living people stay in it as anonymous boxes, so the tree still
-// joins up but their names, dates and places never leave the house.
+// photos. Living people go in as they are: packages are shown to the
+// family itself. (Anonymising them: see git history of this file.)
 //
 //   story.json   the story
 //   tree.json    individuals, families and sources it needs
@@ -14,16 +14,6 @@ import { storyPersonIds, type Story } from '@gedcom/shared/story';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { attachMedia, decodePath } from '@/services/gedzip';
 import { parseStory } from '@/services/stories';
-import { isLiving } from '@/services/research';
-
-const LIVING_NAME = { full: 'Persona vivent', given: 'Persona', surname: 'vivent' };
-
-function redact(ind: Individual): Individual {
-  return {
-    id: ind.id, sex: ind.sex, name: LIVING_NAME, aliases: [], fams: ind.fams, famc: ind.famc,
-    events: [], notes: [], sources: [], media: [], customTags: new Map(),
-  };
-}
 
 interface PackageTree {
   individuals: Individual[];
@@ -31,7 +21,7 @@ interface PackageTree {
   sources: Source[];
 }
 
-/** The slice of the tree a story shows, with living people anonymised. */
+/** The slice of the tree a story shows. */
 export function storySubset(story: Story, data: GedcomData): GedcomData {
   const subset = createGedcomData();
   const add = (part: GedcomData) => {
@@ -41,15 +31,6 @@ export function storySubset(story: Story, data: GedcomData): GedcomData {
   for (const id of storyPersonIds(story)) add(extractSubgraph(data, id, 0));
   for (const step of story.steps) {
     if (step.stage.kind === 'tree') add(extractSubgraph(data, step.stage.focusId, step.stage.generations));
-  }
-
-  const living = new Set([...subset.individuals.values()].filter(i => isLiving(i)).map(i => i.id));
-  for (const id of living) subset.individuals.set(id, redact(subset.individuals.get(id)!));
-  for (const [id, fam] of subset.families) {
-    // A couple's marriage date and place are theirs too.
-    if ((fam.husband && living.has(fam.husband)) || (fam.wife && living.has(fam.wife))) {
-      subset.families.set(id, { ...fam, marriage: undefined, divorce: undefined, events: [], notes: [], sources: [] });
-    }
   }
 
   for (const step of story.steps) {

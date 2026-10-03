@@ -49,7 +49,7 @@ export function StoriesDialog() {
           <DialogTitle>Històries</DialogTitle>
           <DialogDescription>
             Recorreguts guiats per la família per compartir: relat, arbre, fotos i documents, pas a pas.
-            El paquet per compartir només porta les persones de la història; les vives hi surten anònimes.
+            El paquet per compartir només porta les persones i les fotos de la història.
           </DialogDescription>
         </DialogHeader>
 
