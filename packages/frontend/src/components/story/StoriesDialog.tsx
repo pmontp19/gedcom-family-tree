@@ -39,9 +39,9 @@ export function StoriesDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" aria-label="Històries" className="flex items-center gap-1.5">
+        <Button variant="outline" size="sm" aria-label="Històries" title="Històries" className="flex items-center gap-1.5">
           <BookOpen className="h-4 w-4" />
-          <span className="hidden sm:inline">Històries</span>
+          <span className="hidden min-[1440px]:inline">Històries</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
@@ -49,7 +49,7 @@ export function StoriesDialog() {
           <DialogTitle>Històries</DialogTitle>
           <DialogDescription>
             Recorreguts guiats per la família per compartir: relat, arbre, fotos i documents, pas a pas.
-            El paquet per compartir només porta les persones de la història; les vives hi surten anònimes.
+            El paquet per compartir només porta les persones i les fotos de la història.
           </DialogDescription>
         </DialogHeader>
 

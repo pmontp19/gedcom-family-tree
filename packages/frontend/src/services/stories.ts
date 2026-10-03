@@ -5,40 +5,41 @@ import { storySchema, type Story } from '@gedcom/shared/story';
 
 const keyFor = (tree: string) => `stories:${tree}`;
 
-export function loadStories(tree: string): Story[] {
+/** Stored entries as they are: one that no longer validates is hidden, never erased. */
+function loadRaw(tree: string): unknown[] {
   try {
-    const raw = localStorage.getItem(keyFor(tree));
-    if (!raw) return [];
-    // A story that no longer validates (older schema, hand edit) is dropped, not fatal.
-    return (JSON.parse(raw) as unknown[]).flatMap((s) => {
-      const parsed = storySchema.safeParse(s);
-      return parsed.success ? [parsed.data] : [];
-    });
+    const parsed: unknown = JSON.parse(localStorage.getItem(keyFor(tree)) ?? '[]');
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.warn('Stories unavailable:', err);
     return [];
   }
 }
 
-function persist(tree: string, stories: Story[]): void {
-  try {
-    localStorage.setItem(keyFor(tree), JSON.stringify(stories));
-  } catch (err) {
-    console.warn('Could not save stories:', err);
-  }
+const valid = (raw: unknown[]): Story[] => raw.flatMap((s) => {
+  const parsed = storySchema.safeParse(s);
+  return parsed.success ? [parsed.data] : [];
+});
+
+const idOf = (s: unknown) => (s as { id?: unknown } | null)?.id;
+
+export function loadStories(tree: string): Story[] {
+  return valid(loadRaw(tree));
+}
+
+/** Throws when the browser refuses (quota, private mode): the caller says so. */
+function persist(tree: string, raw: unknown[]): Story[] {
+  localStorage.setItem(keyFor(tree), JSON.stringify(raw));
+  return valid(raw);
 }
 
 /** Insert or replace by id; newest first. */
 export function saveStory(tree: string, story: Story): Story[] {
-  const stories = [story, ...loadStories(tree).filter((s) => s.id !== story.id)];
-  persist(tree, stories);
-  return stories;
+  return persist(tree, [story, ...loadRaw(tree).filter((s) => idOf(s) !== story.id)]);
 }
 
 export function deleteStory(tree: string, id: string): Story[] {
-  const stories = loadStories(tree).filter((s) => s.id !== id);
-  persist(tree, stories);
-  return stories;
+  return persist(tree, loadRaw(tree).filter((s) => idOf(s) !== id));
 }
 
 /** Throws with a readable message when the file is not a story. */

@@ -1,7 +1,7 @@
 // A story package (.historia.zip) carries one story to relatives who do not
 // have the tree: the story, only the part of the tree it shows, and its
-// photos. Living people stay in it as anonymous boxes, so the tree still
-// joins up but their names, dates and places never leave the house.
+// photos. Living people go in as they are: packages are shown to the
+// family itself. (Anonymising them: see git history of this file.)
 //
 //   story.json   the story
 //   tree.json    individuals, families and sources it needs
@@ -15,32 +15,13 @@ import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { attachMedia, decodePath } from '@/services/gedzip';
 import { parseStory } from '@/services/stories';
 
-/**
- * No death on record and born within a century, or birth unknown: treat as alive.
- * ponytail: the usual 100-year rule; errs towards hiding someone who has died.
- */
-export function isLiving(ind: Individual, now = new Date().getFullYear()): boolean {
-  if (ind.death || ind.events.some(e => e.type === 'DEAT' || e.type === 'BURI')) return false;
-  const born = ind.birth?.date?.year;
-  return born === undefined || born > now - 100;
-}
-
-const LIVING_NAME = { full: 'Persona vivent', given: 'Persona', surname: 'vivent' };
-
-function redact(ind: Individual): Individual {
-  return {
-    id: ind.id, sex: ind.sex, name: LIVING_NAME, aliases: [], fams: ind.fams, famc: ind.famc,
-    events: [], notes: [], sources: [], media: [], customTags: new Map(),
-  };
-}
-
 interface PackageTree {
   individuals: Individual[];
   families: Family[];
   sources: Source[];
 }
 
-/** The slice of the tree a story shows, with living people anonymised. */
+/** The slice of the tree a story shows. */
 export function storySubset(story: Story, data: GedcomData): GedcomData {
   const subset = createGedcomData();
   const add = (part: GedcomData) => {
@@ -50,15 +31,6 @@ export function storySubset(story: Story, data: GedcomData): GedcomData {
   for (const id of storyPersonIds(story)) add(extractSubgraph(data, id, 0));
   for (const step of story.steps) {
     if (step.stage.kind === 'tree') add(extractSubgraph(data, step.stage.focusId, step.stage.generations));
-  }
-
-  const living = new Set([...subset.individuals.values()].filter(i => isLiving(i)).map(i => i.id));
-  for (const id of living) subset.individuals.set(id, redact(subset.individuals.get(id)!));
-  for (const [id, fam] of subset.families) {
-    // A couple's marriage date and place are theirs too.
-    if ((fam.husband && living.has(fam.husband)) || (fam.wife && living.has(fam.wife))) {
-      subset.families.set(id, { ...fam, marriage: undefined, divorce: undefined, events: [], notes: [], sources: [] });
-    }
   }
 
   for (const step of story.steps) {
@@ -116,9 +88,20 @@ export async function readPackage(file: Blob): Promise<OpenedPackage> {
   const tree = JSON.parse(await treeFile.async('string')) as PackageTree;
   if (!Array.isArray(tree.individuals) || !Array.isArray(tree.families)) throw new Error('Invalid tree.json');
 
+  // tree.json comes from someone else's browser: fill what a hand-made one may lack.
   const data = createGedcomData();
-  for (const ind of tree.individuals) data.individuals.set(ind.id, { ...ind, customTags: new Map() });
-  for (const fam of tree.families) data.families.set(fam.id, { ...fam, customTags: new Map() });
+  for (const ind of tree.individuals) {
+    data.individuals.set(ind.id, {
+      ...ind, aliases: ind.aliases ?? [], fams: ind.fams ?? [], famc: ind.famc ?? [], events: ind.events ?? [],
+      notes: ind.notes ?? [], sources: ind.sources ?? [], media: ind.media ?? [], customTags: new Map(),
+    });
+  }
+  for (const fam of tree.families) {
+    data.families.set(fam.id, {
+      ...fam, children: fam.children ?? [], events: fam.events ?? [], notes: fam.notes ?? [],
+      sources: fam.sources ?? [], customTags: new Map(),
+    });
+  }
   for (const src of tree.sources ?? []) data.sources.set(src.id, src);
 
   const media = new Map<string, string>();
@@ -127,11 +110,11 @@ export async function readPackage(file: Blob): Promise<OpenedPackage> {
       if (entry.dir || !IMAGE_RE.test(entry.name)) continue;
       media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
     }
+    attachMedia(data, media);
   } catch (err) {
     // The caller never gets the map, so nobody else can revoke these.
     for (const url of media.values()) URL.revokeObjectURL(url);
     throw err;
   }
-  attachMedia(data, media);
   return { story, data, media };
 }

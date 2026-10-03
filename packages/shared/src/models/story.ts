@@ -16,7 +16,8 @@ const xref = z.string().transform((id) => id.replace(/^@(.*)@$/, '$1'));
 const storyMedia = z.object({
   personId: xref.optional().describe('Owner of the OBJE, with `file`'),
   file: z.string().optional().describe('OBJE FILE reference exactly as in the tree'),
-  src: z.string().optional().describe('Direct image URL, when the image is not in the tree'),
+  // https only: an imported story must not point the viewer at http or javascript: URLs.
+  src: z.url({ protocol: /^https$/ }).optional().describe('Direct https image URL, when the image is not in the tree'),
   caption: z.string().optional(),
 });
 

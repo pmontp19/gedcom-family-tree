@@ -23,9 +23,11 @@ describe('story storage', () => {
     expect(deleteStory('a.ged', a.id).map(s => s.id)).toEqual([b.id]);
   });
 
-  it('drops stored entries that no longer validate', () => {
-    localStorage.setItem('stories:a.ged', JSON.stringify([{ title: 'trencada' }, story()]));
+  it('hides stored entries that no longer validate, and never erases them', () => {
+    localStorage.setItem('stories:a.ged', JSON.stringify([{ id: 'old', title: 'trencada' }, story()]));
     expect(loadStories('a.ged')).toHaveLength(1);
+    saveStory('a.ged', story());
+    expect(JSON.parse(localStorage.getItem('stories:a.ged')!).map((s: { id: string }) => s.id)).toContain('old');
   });
 
   it('round-trips an exported file and rejects anything else', () => {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
 import type { Story } from '@gedcom/shared/story';
 import type { OpenedPackage } from '@/services/story-package';
+import { loadInterviews, persistInterviews, withAnswer, type Interviews } from '@/services/research';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
@@ -60,6 +61,17 @@ function toBase64(bytes: ArrayBuffer): string {
   return btoa(binary);
 }
 
+/** Interview answers ride along to the AI, so its stories can use what relatives told. */
+function uploadInterviews(interviews: Interviews) {
+  const notes = Object.fromEntries(Object.entries(interviews).map(([id, answers]) =>
+    [id, Object.values(answers).map(({ question, answer }) => ({ question, answer }))]));
+  fetch(`${API_URL}/api/interviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  }).catch(() => { /* Server might not be running */ });
+}
+
 async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
   try {
     const payload = {
@@ -85,6 +97,17 @@ async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
 /** Blob URLs live until revoked; a new tree or a clear ends the old one's. */
 function revokeMedia(urls: string[]) {
   for (const url of urls) URL.revokeObjectURL(url);
+}
+
+/** The browser can refuse to store (quota, private mode): say so, keep the list as it was. */
+function storeOrWarn(write: () => Story[], unchanged: Story[]): Story[] {
+  try {
+    return write();
+  } catch (err) {
+    console.error('Could not save stories:', err);
+    alert("No s'ha pogut desar al navegador. Potser l'espai és ple.");
+    return unchanged;
+  }
 }
 
 // Parser worker singleton
@@ -145,6 +168,7 @@ interface TreeState {
   mediaUrls: string[];
   stories: Story[];
   playingStory: Story | null;
+  interviews: Interviews;
 
   loadFile: (content: string, filename: string, bytes: ArrayBuffer, media?: Map<string, string>) => void;
   /** A story package: no GEDCOM, straight into the story. */
@@ -158,6 +182,7 @@ interface TreeState {
   saveStory: (story: Story) => Promise<void>;
   deleteStory: (id: string) => Promise<void>;
   playStory: (story: Story | null) => void;
+  saveAnswer: (personId: string, key: string, question: string, answer: string) => void;
 }
 
 export const useTreeStore = create<TreeState>((set, get) => ({
@@ -177,6 +202,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   mediaUrls: [],
   stories: [],
   playingStory: null,
+  interviews: {},
 
   loadFile: (content, filename, bytes, media) => {
     // A newer load supersedes this one; its late results must not land.
@@ -212,10 +238,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         parsing: false,
         stories: [],
         playingStory: null,
+        interviews: loadInterviews(filename),
       });
       void storyStorage().then((m) => { if (current()) set({ stories: m.loadStories(filename) }); });
       // The tree holds living relatives' data: it only leaves the browser for the AI.
-      if (AI_ENABLED) void uploadToServer(data, bytes);
+      if (AI_ENABLED) void uploadToServer(data, bytes).then(() => {
+        if (current()) uploadInterviews(get().interviews);
+      });
     }).catch((error) => {
       console.error('Failed to parse GEDCOM:', error);
       if (!current()) return;
@@ -242,6 +271,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       mediaUrls: [...media.values()],
       stories: [story],
       playingStory: story,
+      interviews: {},
     });
   },
 
@@ -301,20 +331,30 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       mediaUrls: [],
       stories: [],
       playingStory: null,
+      interviews: {},
     });
   },
 
   saveStory: async (story) => {
     const { filename } = get();
     const m = await storyStorage();
-    if (filename && filename === get().filename) set({ stories: m.saveStory(filename, story) });
+    if (filename && filename === get().filename) set({ stories: storeOrWarn(() => m.saveStory(filename, story), get().stories) });
   },
 
   deleteStory: async (id) => {
     const { filename } = get();
     const m = await storyStorage();
-    if (filename && filename === get().filename) set({ stories: m.deleteStory(filename, id) });
+    if (filename && filename === get().filename) set({ stories: storeOrWarn(() => m.deleteStory(filename, id), get().stories) });
   },
 
   playStory: (story) => set({ playingStory: story }),
+
+  saveAnswer: (personId, key, question, answer) => {
+    const { filename, rawData } = get();
+    if (!filename) return;
+    const interviews = withAnswer(get().interviews, personId, key, question, answer);
+    persistInterviews(filename, interviews);
+    set({ interviews });
+    if (AI_ENABLED && rawData) uploadInterviews(interviews);
+  },
 }));

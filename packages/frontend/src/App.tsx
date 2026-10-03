@@ -6,6 +6,7 @@ import { FileUpload, PersonPanel, TreeHealth } from '@/components/panels';
 import { FocusSelector } from '@/components/panels/FocusSelector';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { StoriesDialog } from '@/components/story/StoriesDialog';
+import { ResearchDialog } from '@/components/research/ResearchDialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Users, Bot, User, Focus } from 'lucide-react';
@@ -121,28 +122,29 @@ function App() {
     <div className="h-screen w-screen flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-2 md:px-4 py-2 border-b bg-background">
-        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0 overflow-hidden">
           <h1 className="text-lg font-semibold flex items-center gap-2 shrink-0">
             <Users className="h-5 w-5" />
             <span className="hidden sm:inline">Arbre genealògic</span>
           </h1>
           <Separator orientation="vertical" className="h-6 hidden md:block" />
-          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-            <FileText className="h-4 w-4" />
+          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+            <FileText className="h-4 w-4 shrink-0" />
             <span className="truncate">{filename}</span>
-            <span className="text-xs bg-muted px-2 py-0.5 rounded whitespace-nowrap">{format}</span>
+            <span className="text-xs bg-muted px-2 py-0.5 rounded whitespace-nowrap shrink-0">{format}</span>
           </div>
-          <span className="hidden lg:block text-sm text-muted-foreground whitespace-nowrap">
+          <span className="hidden 2xl:block text-sm text-muted-foreground whitespace-nowrap">
             {displayData.individuals.size} {displayData.individuals.size === 1 ? 'persona' : 'persones'}, {displayData.families.size} {displayData.families.size === 1 ? 'família' : 'famílies'}
           </span>
         </div>
         <div className="flex gap-1 md:gap-2 shrink-0">
+          <ResearchDialog />
           <StoriesDialog />
           <TreeHealth />
           <ThemeToggle theme={theme} onThemeChange={setTheme} />
-          <Button variant="outline" size="sm" onClick={changeFocus} aria-label="Canvia el focus" className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={changeFocus} aria-label="Canvia el focus" title="Canvia el focus" className="flex items-center gap-1.5">
             <Focus className="h-4 w-4" />
-            <span className="hidden sm:inline">Canvia el focus</span>
+            <span className="hidden min-[1440px]:inline">Canvia el focus</span>
           </Button>
           {selectedPerson && (
             <Button
@@ -161,13 +163,14 @@ function App() {
               size="sm"
               onClick={() => setAgentOpen(o => !o)}
               aria-label="Pregunta a la IA"
+              title="Pregunta a la IA"
               className="flex items-center gap-1.5"
             >
               <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">Pregunta a la IA</span>
+              <span className="hidden min-[1440px]:inline">Pregunta a la IA</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={clear} className="hidden sm:flex">
+          <Button variant="outline" size="sm" onClick={clear} className="hidden lg:flex">
             Carrega'n un altre
           </Button>
         </div>

@@ -10,10 +10,24 @@ import { createGedcomTools } from './tools/index.js';
 import { getStory } from './tools/stories.js';
 import { gedcomStore } from './gedcom-store.js';
 import type { SerializedGedcomData } from '@gedcom/shared';
+import { z } from 'zod';
+
+const interviewsSchema = z.object({
+  notes: z.record(z.string(), z.array(z.object({ question: z.string().max(500), answer: z.string().max(10_000) }))),
+});
 
 const app = new Hono();
 
 app.use('*', cors({ origin: 'http://localhost:5173' }));
+
+// CORS alone does not stop another site from posting text/plain here without a
+// preflight; only JSON requests, which need one, may write.
+app.use('/api/*', async (c, next) => {
+  if (c.req.method === 'POST' && !c.req.header('content-type')?.startsWith('application/json')) {
+    return c.json({ error: 'expected application/json' }, 415);
+  }
+  await next();
+});
 
 app.post('/api/upload', async (c) => {
   // `raw` is the base64 of the original file bytes, kept for the gedlint audit.
@@ -23,6 +37,15 @@ app.post('/api/upload', async (c) => {
   const famCount = Object.keys(data.families).length;
   console.log(`[gedcom] loaded ${indCount} individuals, ${famCount} families`);
   return c.json({ ok: true, individuals: indCount, families: famCount });
+});
+
+app.post('/api/interviews', async (c) => {
+  const parsed = interviewsSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: 'invalid interviews' }, 400);
+  const data = gedcomStore.get();
+  if (!data) return c.json({ error: 'no tree loaded' }, 409);
+  data.interviews = parsed.data.notes;
+  return c.json({ ok: true });
 });
 
 app.get('/api/stories/:id', (c) => {
@@ -60,7 +83,9 @@ app.post('/api/chat', async (c) => {
           'Vary the stages: the tree when people meet or are born, a document when a source backs the step (quote its page), ' +
           'photos when the person has media, a map (coordinates from geocode_places) when the family moves, with route for a migration. ' +
           'For a single Catalan village before 1960, a map with the orto-1945 or orto-1956 basemap shows it as the family saw it. ' +
-          'If save_story returns errors, fix them and call it again.',
+          'If save_story returns errors, fix them and call it again. ' +
+          'interview_notes (from get_individual_detail) are what relatives remember: they bring a story to life, ' +
+          'told as family memory ("segons recorda la família"), and go in the step notes too.',
         'Be concise in text; let the components carry the data.',
       ],
     }),

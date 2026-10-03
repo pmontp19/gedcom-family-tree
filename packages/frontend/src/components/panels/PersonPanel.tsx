@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -5,8 +6,10 @@ import type { GedcomData, Individual, Family, Event, Citation } from '@gedcom/sh
 import { getDisplayName, getLifeYears, formatDateLong } from '@gedcom/shared';
 import {
   X, MapPin, Users, Heart, Home, Briefcase, GraduationCap, Plane, Baby, Skull,
-  Church, Scale, Image as ImageIcon, BookOpen, StickyNote, Droplets, Landmark, ScrollText,
+  Church, Scale, Image as ImageIcon, BookOpen, StickyNote, Droplets, Landmark, ScrollText, MessageSquareText,
 } from 'lucide-react';
+import { useTreeStore } from '@/hooks/useTreeStore';
+import { InterviewDialog } from '@/components/research/InterviewDialog';
 import { Button } from '@/components/ui/button';
 import { findSiblings } from '@/services/relatives';
 
@@ -30,6 +33,8 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
     .filter(n => n && n !== individual.name?.full);
   // Only files something resolved to a loadable URL: the rest would render broken.
   const photos = individual.media.filter((m) => m.url);
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const answers = Object.values(useTreeStore((s) => s.interviews[individual.id]) ?? {});
 
   return (
     <Card className="h-full rounded-none md:rounded-lg border-0 md:border">
@@ -60,6 +65,10 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
                 També: {otherNames.join(', ')}
               </p>
             )}
+            <Button variant="outline" size="sm" onClick={() => setInterviewOpen(true)} className="mt-2 h-7 gap-1.5 text-xs">
+              <MessageSquareText className="h-3.5 w-3.5" /> Entrevista
+            </Button>
+            <InterviewDialog individual={individual} data={data} open={interviewOpen} onOpenChange={setInterviewOpen} />
           </div>
         </div>
         {onClose && (
@@ -154,6 +163,21 @@ export function PersonPanel({ individual, data, onClose, onSelectPerson }: Perso
                     <p key={i} className="text-sm text-muted-foreground whitespace-pre-line break-words">{note}</p>
                   ))}
                 </div>
+              </>
+            )}
+
+            {answers.length > 0 && (
+              <>
+                <Separator />
+                <SectionHeader icon={<MessageSquareText className="h-4 w-4" />} label="Entrevistes" />
+                <dl className="space-y-2">
+                  {answers.map((a) => (
+                    <div key={a.question}>
+                      <dt className="text-xs text-muted-foreground">{a.question}</dt>
+                      <dd className="text-sm whitespace-pre-line break-words">{a.answer}</dd>
+                    </div>
+                  ))}
+                </dl>
               </>
             )}
 
