@@ -8,6 +8,7 @@ export { createFamily, getSpouses as getFamilySpouses } from './models/family.js
 export type { GedcomData, GedcomHeader, Source } from './models/gedcom-data.js';
 export { createGedcomData, getIndividual, getFamily, getChildren, getParents, getSpouses } from './models/gedcom-data.js';
 export * from './models/serialized.js';
+export * from './models/story.js';
 
 // Utilities
 export { cn } from './utils/index.js';

@@ -4,7 +4,7 @@ Interactive family tree viewer with AI-powered assistant.
 
 ![Demo](demo-screenshot.png)
 
-Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree.
+Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree, or [`demo-catala.ged`](demo-catala.ged) and import the story [`demo-catala.historia.json`](demo-catala.historia.json) from **Històries**.
 
 ## Features
 
@@ -14,6 +14,7 @@ Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree.
 - Person panel for research: events with their notes and cited sources (with page), other names, every parent family, siblings and half-siblings, notes and sources
 - UI in Catalan
 - Tree Health: in-browser GEDCOM lint (gedlint, WASM)
+- Stories: guided walks through the family for relatives, step by step, each step a narrative beside the tree (people highlighted), a photo or a document. Kept in the browser per tree; export/import as `.historia.json`
 - AI assistant for genealogy queries (off by default, see below)
 - Responsive mobile-friendly UI
 

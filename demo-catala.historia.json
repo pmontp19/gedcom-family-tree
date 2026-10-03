@@ -1,0 +1,45 @@
+{
+  "id": "demo-puig",
+  "createdAt": "2026-10-03T00:00:00.000Z",
+  "title": "Del Pla d'Urgell a Barcelona",
+  "subtitle": "La família Puig, 1842-1926",
+  "rootId": "I6",
+  "steps": [
+    {
+      "title": "Un pagès de Vilanova de Bellpuig",
+      "date": "1842",
+      "body": "Josep Puig neix el 14 de març de 1842 a Vilanova de Bellpuig, un poble pagès del Pla d'Urgell.\n\nTreballa les terres del mas de la família tota la vida. Segons la tradició familiar, va plantar les primeres oliveres de la partida del Pla.",
+      "people": ["I1"],
+      "highlights": ["Baptisme registrat al foli 23 del llibre parroquial"],
+      "notes": ["La història de les oliveres només ve de la tradició oral: falta un document que la confirmi."],
+      "stage": { "kind": "tree", "focusId": "I1", "generations": 1 }
+    },
+    {
+      "title": "El llibre de baptismes",
+      "date": "1842",
+      "body": "El seu baptisme queda escrit al llibre de la parròquia, avui a l'Arxiu Diocesà de Solsona. És el document més antic que tenim de la família.",
+      "people": ["I1"],
+      "highlights": [],
+      "notes": [],
+      "stage": { "kind": "document", "sourceId": "S1", "title": "Llibre de baptismes", "page": "Foli 23", "excerpt": "En la iglesia parroquial de Vilanova de Bellpuig, a catorce de marzo de mil ochocientos cuarenta y dos, bauticé solemnemente a Josep Puig..." }
+    },
+    {
+      "title": "Una nova família",
+      "date": "1896",
+      "body": "El seu fill Ramon es casa amb Rosa Solé, de Mollerussa, el 12 de febrer de 1896. Tenen dos fills: en Joan i en Pere.",
+      "people": ["I3", "I5", "I6", "I8"],
+      "highlights": ["Casament a Mollerussa, 1896"],
+      "notes": [],
+      "stage": { "kind": "tree", "focusId": "I3", "generations": 2 }
+    },
+    {
+      "title": "Cap a la ciutat",
+      "date": "1919",
+      "body": "Després de la mala collita de 1918, en Joan marxa a Barcelona a treballar al tèxtil. L'any 1930 el padró el troba vivint al districte V, i de professió teixidor.",
+      "people": ["I6", "I7"],
+      "highlights": ["Emigra a Barcelona el 1919", "Padró de 1930: districte V, full 412"],
+      "notes": ["Comprovar si va treballar a la Fabra i Coats, com diu la família."],
+      "stage": { "kind": "tree", "focusId": "I6", "generations": 2 }
+    }
+  ]
+}

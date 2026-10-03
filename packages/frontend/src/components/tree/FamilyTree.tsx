@@ -13,6 +13,7 @@ import { PixiTree } from './PixiTree';
 interface FamilyTreeProps {
   data: GedcomData;
   selectedId?: string;
+  highlightIds?: ReadonlySet<string>;
   /** Who the view was built around: the first view centres on them when the tree doesn't fit. */
   focusId?: string;
   onSelect?: (individual: Individual) => void;
@@ -34,7 +35,7 @@ function getDetailLevel(k: number): DetailLevel {
 }
 
 export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
-  function FamilyTree({ data, selectedId, focusId, onSelect, themeId }, ref) {
+  function FamilyTree({ data, selectedId, highlightIds, focusId, onSelect, themeId }, ref) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -262,6 +263,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
           graph={graph}
           transform={transform}
           selectedId={selectedId}
+          highlightIds={highlightIds}
           onSelect={handleNodeClick}
           detailLevel={detailLevel}
           themeId={themeId}
