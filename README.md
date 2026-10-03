@@ -15,6 +15,7 @@ Try the demo: load [`demo.ged`](demo.ged) to see a sample family tree, or [`demo
 - UI in Catalan
 - Tree Health: in-browser GEDCOM lint (gedlint, WASM)
 - Stories: guided walks through the family for relatives, step by step, each step a narrative beside the tree (people highlighted), a photo or a document. Kept in the browser per tree; export/import as `.historia.json`
+- Story packages (`.historia.zip`): share one story with relatives who do not have the tree. It carries the story, only the people it shows and its photos; living people (no death, born within 100 years) stay as anonymous boxes. Opening one on the upload screen goes straight into the story
 - Story maps: places and migration routes on the ICGC topographic map, or a Catalan village as the 1945-46 and 1956-57 American flights photographed it (ICGC historical orthophotos). The AI geocodes places with the ICGC geocoder, OpenStreetMap outside Catalonia
 - AI assistant for genealogy queries (off by default, see below)
 - Responsive mobile-friendly UI

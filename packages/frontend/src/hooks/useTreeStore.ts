@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
 import type { Story } from '@gedcom/shared/story';
+import type { OpenedPackage } from '@/services/story-package';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
@@ -146,6 +147,8 @@ interface TreeState {
   playingStory: Story | null;
 
   loadFile: (content: string, filename: string, bytes: ArrayBuffer, media?: Map<string, string>) => void;
+  /** A story package: no GEDCOM, straight into the story. */
+  openPackage: (pkg: OpenedPackage, filename: string) => void;
   setFocus: (id: string, generations: number) => void;
   viewAll: () => void;
   changeFocus: () => void;
@@ -190,6 +193,12 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       });
     parseOnWorker(content).then(({ data, format }) => {
       if (!current()) return;
+      // Anything parses as an empty tree: an HTML page, a CSV. Nothing to show is a failed load.
+      if (data.individuals.size === 0) {
+        set({ parsing: false, lintResult: null, linting: false });
+        alert(`No s'ha trobat cap persona a ${filename}. És un fitxer GEDCOM?`);
+        return;
+      }
       if (media) attachMedia(data, media);
       set({
         rawData: content,
@@ -212,6 +221,27 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       if (!current()) return;
       set({ parsing: false });
       alert('No s\'ha pogut llegir el fitxer GEDCOM');
+    });
+  },
+
+  openPackage: ({ story, data, media }, filename) => {
+    loadSeq++; // drop any load still in flight
+    revokeMedia(get().mediaUrls);
+    set({
+      rawData: null,
+      filename,
+      format: 'Història',
+      data,
+      viewData: data,
+      focusId: story.rootId,
+      selectedId: null,
+      screen: 'tree-view',
+      parsing: false,
+      lintResult: null,
+      linting: false,
+      mediaUrls: [...media.values()],
+      stories: [story],
+      playingStory: story,
     });
   },
 

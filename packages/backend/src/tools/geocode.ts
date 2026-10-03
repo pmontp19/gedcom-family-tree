@@ -62,7 +62,7 @@ async function osm(place: string): Promise<Omit<GeocodedPlace, 'place'> | null> 
 
 const cache = new Map<string, GeocodedPlace | null>();
 
-export async function geocode(place: string): Promise<GeocodedPlace | null> {
+async function geocode(place: string): Promise<GeocodedPlace | null> {
   if (cache.has(place)) return cache.get(place)!;
   let found: Omit<GeocodedPlace, 'place'> | null = null;
   try {

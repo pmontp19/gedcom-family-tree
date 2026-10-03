@@ -3,6 +3,7 @@ import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { readGedzip } from '@/services/gedzip';
 import { decodeGedcom } from '@gedcom/parser';
+import type { OpenedPackage } from '@/services/story-package';
 
 interface FileUploadProps {
   onFileLoad: (
@@ -11,11 +12,17 @@ interface FileUploadProps {
     bytes: ArrayBuffer,
     media?: Map<string, string>,
   ) => void;
+  onPackageLoad: (pkg: OpenedPackage, filename: string) => void;
 }
 
-export function FileUpload({ onFileLoad }: FileUploadProps) {
+export function FileUpload({ onFileLoad, onPackageLoad }: FileUploadProps) {
   const readFile = useCallback(async (file: File) => {
     try {
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        const { readPackage } = await import('@/services/story-package');
+        onPackageLoad(await readPackage(file), file.name);
+        return;
+      }
       if (file.name.toLowerCase().endsWith('.gdz')) {
         const { text, bytes, media } = await readGedzip(file);
         onFileLoad(text, file.name, bytes, media);
@@ -29,7 +36,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
       console.error('Failed to read file:', err);
       alert(`No s'ha pogut llegir ${file.name}`);
     }
-  }, [onFileLoad]);
+  }, [onFileLoad, onPackageLoad]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -51,12 +58,12 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
       <Upload className="h-12 w-12 text-muted-foreground mb-4" />
       <h3 className="text-lg font-semibold mb-2">Puja un fitxer GEDCOM</h3>
       <p className="text-sm text-muted-foreground text-center mb-4">
-        Arrossega aquí un fitxer .ged o .gdz, o fes clic per triar-lo
+        Arrossega aquí un fitxer .ged o .gdz, o una història (.historia.zip), o fes clic per triar-lo
       </p>
       <label>
         <input
           type="file"
-          accept=".ged,.gdz"
+          accept=".ged,.gdz,.zip"
           onChange={handleFileChange}
           className="hidden"
         />
