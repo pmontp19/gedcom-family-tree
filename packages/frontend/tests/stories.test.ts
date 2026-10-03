@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createStory } from '@gedcom/shared';
+import { createStory } from '@gedcom/shared/story';
 import { loadStories, saveStory, deleteStory, parseStory, slugify } from '@/services/stories';
 
 const story = () => createStory({

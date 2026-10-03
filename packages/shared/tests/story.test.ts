@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createStory, storyPersonIds, storyDraftSchema } from '../src/index.js';
+import { createStory, storyPersonIds, storyDraftSchema } from '../src/models/story.js';
 
 const draft = {
   title: 'Cap a la ciutat',

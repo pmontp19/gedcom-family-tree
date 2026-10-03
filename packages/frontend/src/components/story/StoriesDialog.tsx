@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import { exportStory, parseStory } from '@/services/stories';
 
 export function StoriesDialog() {
   const { stories, saveStory, deleteStory, playStory } = useTreeStore();
@@ -14,7 +13,8 @@ export function StoriesDialog() {
 
   const importFile = async (file: File) => {
     try {
-      saveStory(parseStory(await file.text()));
+      const { parseStory } = await import('@/services/stories');
+      await saveStory(parseStory(await file.text()));
       setError(null);
     } catch (err) {
       console.error('Failed to import story:', err);
@@ -55,13 +55,13 @@ export function StoriesDialog() {
                 <Button size="sm" onClick={() => { setOpen(false); playStory(story); }} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" /> Mira
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => exportStory(story)} aria-label={`Exporta ${story.title}`}>
+                <Button variant="ghost" size="icon" onClick={() => void import('@/services/stories').then(m => m.exportStory(story))} aria-label={`Exporta ${story.title}`}>
                   <Download className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => { if (confirm(`Vols esborrar «${story.title}»?`)) deleteStory(story.id); }}
+                  onClick={() => { if (confirm(`Vols esborrar «${story.title}»?`)) void deleteStory(story.id); }}
                   aria-label={`Esborra ${story.title}`}
                 >
                   <Trash2 className="h-4 w-4" />

@@ -7,6 +7,7 @@ import { factsTools } from './facts.js';
 import { auditTools } from './audit.js';
 import { reportsTools } from './reports.js';
 import { storyTools } from './stories.js';
+import { geocodeTools } from './geocode.js';
 import type { ToolSet } from 'ai';
 
 export function createGedcomTools(data: SerializedGedcomData, raw: Buffer | null): ToolSet {
@@ -18,6 +19,7 @@ export function createGedcomTools(data: SerializedGedcomData, raw: Buffer | null
     ...factsTools(data),
     ...reportsTools(data),
     ...storyTools(data),
+    ...geocodeTools(),
     ...auditTools(raw),
   } as ToolSet;
 }

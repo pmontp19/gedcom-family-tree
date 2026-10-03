@@ -1,7 +1,7 @@
 // Stories live in the browser, per tree: the tree itself never leaves it
 // either. Export/import moves one story between browsers as a JSON file.
 
-import { storySchema, type Story } from '@gedcom/shared';
+import { storySchema, type Story } from '@gedcom/shared/story';
 
 const keyFor = (tree: string) => `stories:${tree}`;
 

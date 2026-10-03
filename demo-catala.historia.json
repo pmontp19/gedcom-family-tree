@@ -9,37 +9,141 @@
       "title": "Un pagès de Vilanova de Bellpuig",
       "date": "1842",
       "body": "Josep Puig neix el 14 de març de 1842 a Vilanova de Bellpuig, un poble pagès del Pla d'Urgell.\n\nTreballa les terres del mas de la família tota la vida. Segons la tradició familiar, va plantar les primeres oliveres de la partida del Pla.",
-      "people": ["I1"],
-      "highlights": ["Baptisme registrat al foli 23 del llibre parroquial"],
-      "notes": ["La història de les oliveres només ve de la tradició oral: falta un document que la confirmi."],
-      "stage": { "kind": "tree", "focusId": "I1", "generations": 1 }
+      "people": [
+        "I1"
+      ],
+      "highlights": [
+        "Baptisme registrat al foli 23 del llibre parroquial"
+      ],
+      "notes": [
+        "La història de les oliveres només ve de la tradició oral: falta un document que la confirmi."
+      ],
+      "stage": {
+        "kind": "tree",
+        "focusId": "I1",
+        "generations": 1
+      }
+    },
+    {
+      "title": "El poble",
+      "date": "1945",
+      "body": "Així es veia Vilanova de Bellpuig des de l'aire el 1945, quan l'exèrcit dels Estats Units va fotografiar tot Catalunya. Les cases apinyades al voltant de l'església i, tot al voltant, els camps que la família va treballar durant generacions.",
+      "people": [
+        "I1",
+        "I3"
+      ],
+      "highlights": [],
+      "notes": [
+        "Fotografia aèria del vol americà de 1945-1946 (ICGC)."
+      ],
+      "stage": {
+        "kind": "map",
+        "places": [
+          {
+            "name": "Vilanova de Bellpuig",
+            "lat": 41.61475992,
+            "lon": 0.96076488
+          }
+        ],
+        "basemap": "orto-1945"
+      }
     },
     {
       "title": "El llibre de baptismes",
       "date": "1842",
       "body": "El seu baptisme queda escrit al llibre de la parròquia, avui a l'Arxiu Diocesà de Solsona. És el document més antic que tenim de la família.",
-      "people": ["I1"],
+      "people": [
+        "I1"
+      ],
       "highlights": [],
       "notes": [],
-      "stage": { "kind": "document", "sourceId": "S1", "title": "Llibre de baptismes", "page": "Foli 23", "excerpt": "En la iglesia parroquial de Vilanova de Bellpuig, a catorce de marzo de mil ochocientos cuarenta y dos, bauticé solemnemente a Josep Puig..." }
+      "stage": {
+        "kind": "document",
+        "sourceId": "S1",
+        "title": "Llibre de baptismes",
+        "page": "Foli 23",
+        "excerpt": "En la iglesia parroquial de Vilanova de Bellpuig, a catorce de marzo de mil ochocientos cuarenta y dos, bauticé solemnemente a Josep Puig..."
+      }
     },
     {
       "title": "Una nova família",
       "date": "1896",
       "body": "El seu fill Ramon es casa amb Rosa Solé, de Mollerussa, el 12 de febrer de 1896. Tenen dos fills: en Joan i en Pere.",
-      "people": ["I3", "I5", "I6", "I8"],
-      "highlights": ["Casament a Mollerussa, 1896"],
+      "people": [
+        "I3",
+        "I5",
+        "I6",
+        "I8"
+      ],
+      "highlights": [
+        "Casament a Mollerussa, 1896"
+      ],
       "notes": [],
-      "stage": { "kind": "tree", "focusId": "I3", "generations": 2 }
+      "stage": {
+        "kind": "tree",
+        "focusId": "I3",
+        "generations": 2
+      }
     },
     {
       "title": "Cap a la ciutat",
       "date": "1919",
       "body": "Després de la mala collita de 1918, en Joan marxa a Barcelona a treballar al tèxtil. L'any 1930 el padró el troba vivint al districte V, i de professió teixidor.",
-      "people": ["I6", "I7"],
-      "highlights": ["Emigra a Barcelona el 1919", "Padró de 1930: districte V, full 412"],
-      "notes": ["Comprovar si va treballar a la Fabra i Coats, com diu la família."],
-      "stage": { "kind": "tree", "focusId": "I6", "generations": 2 }
+      "people": [
+        "I6",
+        "I7"
+      ],
+      "highlights": [
+        "Emigra a Barcelona el 1919",
+        "Padró de 1930: districte V, full 412"
+      ],
+      "notes": [
+        "Comprovar si va treballar a la Fabra i Coats, com diu la família."
+      ],
+      "stage": {
+        "kind": "tree",
+        "focusId": "I6",
+        "generations": 2
+      }
+    },
+    {
+      "title": "El camí",
+      "date": "1842-1924",
+      "body": "En tres generacions, la família passa del Pla d'Urgell a Barcelona: de Vilanova de Bellpuig a Mollerussa per casar-se, i d'allà a la ciutat per treballar.",
+      "people": [
+        "I1",
+        "I3",
+        "I6"
+      ],
+      "highlights": [],
+      "notes": [],
+      "stage": {
+        "kind": "map",
+        "route": true,
+        "places": [
+          {
+            "name": "Vilanova de Bellpuig",
+            "lat": 41.61475992,
+            "lon": 0.96076488,
+            "year": 1842,
+            "label": "Neix Josep"
+          },
+          {
+            "name": "Mollerussa",
+            "lat": 41.62983521,
+            "lon": 0.89369687,
+            "year": 1896,
+            "label": "Es casen Ramon i Rosa"
+          },
+          {
+            "name": "Barcelona",
+            "lat": 41.38272127,
+            "lon": 2.17703293,
+            "year": 1919,
+            "label": "Hi arriba Joan"
+          }
+        ]
+      }
     }
   ]
 }

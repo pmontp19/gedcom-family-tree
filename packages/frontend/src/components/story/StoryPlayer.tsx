@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
-import type { GedcomData, Story, StoryStep, StoryStage, StoryMedia } from '@gedcom/shared';
+import type { GedcomData } from '@gedcom/shared';
+import type { Story, StoryStep, StoryStage, StoryMedia } from '@gedcom/shared/story';
 import { getDisplayName, getLifeYears } from '@gedcom/shared';
 import { ChevronLeft, ChevronRight, X, StickyNote, ScrollText, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import type { ThemeId } from '@/visualization/theme';
 
 const FamilyTree = lazy(() => import('@/components/tree/FamilyTree').then(m => ({ default: m.FamilyTree })));
+// Leaflet only loads with the first map step.
+const MapStage = lazy(() => import('./MapStage').then(m => ({ default: m.MapStage })));
 
 interface StoryPlayerProps {
   story: Story;
@@ -140,6 +143,7 @@ function Stage({ stage, people, data, themeId }: { stage: StoryStage; people: st
     case 'tree': return <TreeStage focusId={stage.focusId} generations={stage.generations} people={people} data={data} themeId={themeId} />;
     case 'media': return <MediaStage items={stage.items} data={data} />;
     case 'document': return <DocumentStage {...stage} data={data} />;
+    case 'map': return <Suspense fallback={null}><MapStage places={stage.places} route={stage.route} basemap={stage.basemap} /></Suspense>;
   }
 }
 
