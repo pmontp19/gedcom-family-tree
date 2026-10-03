@@ -25,6 +25,14 @@ app.post('/api/upload', async (c) => {
   return c.json({ ok: true, individuals: indCount, families: famCount });
 });
 
+app.post('/api/interviews', async (c) => {
+  const { notes } = await c.req.json() as { notes: NonNullable<SerializedGedcomData['interviews']> };
+  const data = gedcomStore.get();
+  if (!data) return c.json({ error: 'no tree loaded' }, 409);
+  data.interviews = notes;
+  return c.json({ ok: true });
+});
+
 app.get('/api/stories/:id', (c) => {
   const story = getStory(c.req.param('id'));
   return story ? c.json(story) : c.json({ error: 'not found' }, 404);
@@ -60,7 +68,9 @@ app.post('/api/chat', async (c) => {
           'Vary the stages: the tree when people meet or are born, a document when a source backs the step (quote its page), ' +
           'photos when the person has media, a map (coordinates from geocode_places) when the family moves, with route for a migration. ' +
           'For a single Catalan village before 1960, a map with the orto-1945 or orto-1956 basemap shows it as the family saw it. ' +
-          'If save_story returns errors, fix them and call it again.',
+          'If save_story returns errors, fix them and call it again. ' +
+          'interview_notes (from get_individual_detail) are what relatives remember: they bring a story to life, ' +
+          'told as family memory ("segons recorda la família"), and go in the step notes too.',
         'Be concise in text; let the components carry the data.',
       ],
     }),

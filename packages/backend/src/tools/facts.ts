@@ -53,6 +53,7 @@ export function factsTools(data: SerializedGedcomData) {
           notes: ind.notes,
           sources: cite(data, ind.sources),
           media: ind.media ?? [],
+          interview_notes: data.interviews?.[individual_id] ?? [],
         };
       },
     }),

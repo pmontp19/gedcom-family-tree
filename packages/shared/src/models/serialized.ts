@@ -37,6 +37,8 @@ export interface SerializedGedcomData {
   individuals: Record<string, SerializedIndividual>;
   families: Record<string, SerializedFamily>;
   sources?: Record<string, Source>;
+  /** What relatives answered in interviews, per individual id. */
+  interviews?: Record<string, { question: string; answer: string }[]>;
 }
 
 // Lean person reference for tool results

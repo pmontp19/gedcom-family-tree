@@ -14,16 +14,7 @@ import { storyPersonIds, type Story } from '@gedcom/shared/story';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { attachMedia, decodePath } from '@/services/gedzip';
 import { parseStory } from '@/services/stories';
-
-/**
- * No death on record and born within a century, or birth unknown: treat as alive.
- * ponytail: the usual 100-year rule; errs towards hiding someone who has died.
- */
-export function isLiving(ind: Individual, now = new Date().getFullYear()): boolean {
-  if (ind.death || ind.events.some(e => e.type === 'DEAT' || e.type === 'BURI')) return false;
-  const born = ind.birth?.date?.year;
-  return born === undefined || born > now - 100;
-}
+import { isLiving } from '@/services/research';
 
 const LIVING_NAME = { full: 'Persona vivent', given: 'Persona', surname: 'vivent' };
 

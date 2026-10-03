@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import JSZip from 'jszip';
 import { parseGedcom } from '@gedcom/parser';
 import { createStory } from '@gedcom/shared/story';
-import { isLiving, storySubset, readPackage } from '@/services/story-package';
+import { storySubset, readPackage } from '@/services/story-package';
+import { isLiving } from '@/services/research';
 
 // demo-catala.ged: Josep I1 → Ramon I3 → Joan I6 → Antoni I9 → Jordi I11 (born 1956, no death).
 const data = parseGedcom(readFileSync(join(__dirname, '../../../demo-catala.ged'), 'utf-8'));

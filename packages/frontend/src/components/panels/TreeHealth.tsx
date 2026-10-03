@@ -98,7 +98,7 @@ export function TreeHealth() {
           className={`flex items-center gap-1.5 ${healthy ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/40' : errors > 0 ? 'text-destructive border-destructive/40' : 'text-amber-600 dark:text-amber-400 border-amber-500/40'}`}
         >
           {healthy ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-          <span className="hidden sm:inline">Salut de l'arbre</span>
+          <span className="hidden min-[1440px]:inline">Salut de l'arbre</span>
           <span className="text-xs font-semibold tabular-nums">
             {healthy ? 'Correcte' : `${errors + warnings}`}
           </span>

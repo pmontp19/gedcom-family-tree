@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { GedcomData, Individual, Family, Event } from '@gedcom/shared';
 import type { Story } from '@gedcom/shared/story';
 import type { OpenedPackage } from '@/services/story-package';
+import { loadInterviews, persistInterviews, withAnswer, type Interviews } from '@/services/research';
 import { extractSubgraph } from '@/visualization/subgraph-extractor';
 import { runGedlint, type GedlintResult } from '@/services/gedlint';
 import { attachMedia } from '@/services/gedzip';
@@ -58,6 +59,17 @@ function toBase64(bytes: ArrayBuffer): string {
     binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
   }
   return btoa(binary);
+}
+
+/** Interview answers ride along to the AI, so its stories can use what relatives told. */
+function uploadInterviews(interviews: Interviews) {
+  const notes = Object.fromEntries(Object.entries(interviews).map(([id, answers]) =>
+    [id, Object.values(answers).map(({ question, answer }) => ({ question, answer }))]));
+  fetch(`${API_URL}/api/interviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  }).catch(() => { /* Server might not be running */ });
 }
 
 async function uploadToServer(data: GedcomData, bytes: ArrayBuffer) {
@@ -145,6 +157,7 @@ interface TreeState {
   mediaUrls: string[];
   stories: Story[];
   playingStory: Story | null;
+  interviews: Interviews;
 
   loadFile: (content: string, filename: string, bytes: ArrayBuffer, media?: Map<string, string>) => void;
   /** A story package: no GEDCOM, straight into the story. */
@@ -158,6 +171,7 @@ interface TreeState {
   saveStory: (story: Story) => Promise<void>;
   deleteStory: (id: string) => Promise<void>;
   playStory: (story: Story | null) => void;
+  saveAnswer: (personId: string, key: string, question: string, answer: string) => void;
 }
 
 export const useTreeStore = create<TreeState>((set, get) => ({
@@ -177,6 +191,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   mediaUrls: [],
   stories: [],
   playingStory: null,
+  interviews: {},
 
   loadFile: (content, filename, bytes, media) => {
     // A newer load supersedes this one; its late results must not land.
@@ -212,10 +227,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         parsing: false,
         stories: [],
         playingStory: null,
+        interviews: loadInterviews(filename),
       });
       void storyStorage().then((m) => { if (current()) set({ stories: m.loadStories(filename) }); });
       // The tree holds living relatives' data: it only leaves the browser for the AI.
-      if (AI_ENABLED) void uploadToServer(data, bytes);
+      if (AI_ENABLED) void uploadToServer(data, bytes).then(() => {
+        if (current()) uploadInterviews(get().interviews);
+      });
     }).catch((error) => {
       console.error('Failed to parse GEDCOM:', error);
       if (!current()) return;
@@ -242,6 +260,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       mediaUrls: [...media.values()],
       stories: [story],
       playingStory: story,
+      interviews: {},
     });
   },
 
@@ -301,6 +320,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       mediaUrls: [],
       stories: [],
       playingStory: null,
+      interviews: {},
     });
   },
 
@@ -317,4 +337,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   },
 
   playStory: (story) => set({ playingStory: story }),
+
+  saveAnswer: (personId, key, question, answer) => {
+    const { filename, rawData } = get();
+    if (!filename) return;
+    const interviews = withAnswer(get().interviews, personId, key, question, answer);
+    persistInterviews(filename, interviews);
+    set({ interviews });
+    if (AI_ENABLED && rawData) uploadInterviews(interviews);
+  },
 }));
