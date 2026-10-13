@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { readGedzip } from '@/services/gedzip';
@@ -38,6 +38,24 @@ export function FileUpload({ onFileLoad, onPackageLoad }: FileUploadProps) {
     }
   }, [onFileLoad, onPackageLoad]);
 
+  // `?historia=/path/to/x.historia.zip` opens a package straight away: a link
+  // to send relatives, no file picker. Same origin only.
+  const [linked, setLinked] = useState(() => new URLSearchParams(location.search).get('historia'));
+  const [linkError, setLinkError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!linked) return;
+    const url = new URL(linked, location.href);
+    if (url.origin !== location.origin) { setLinked(null); return; }
+    void fetch(url)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+      .then((blob) => readFile(new File([blob], url.pathname.split('/').pop() || 'historia.zip')))
+      .catch((err) => {
+        console.error('Failed to fetch story package:', err);
+        setLinkError(`No s'ha pogut obrir la història (${err instanceof Error ? err.message : err})`);
+      })
+      .finally(() => setLinked(null));
+  }, [linked, readFile]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -49,12 +67,22 @@ export function FileUpload({ onFileLoad, onPackageLoad }: FileUploadProps) {
     if (file) void readFile(file);
   }, [readFile]);
 
+  if (linked) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+        <p className="text-sm text-muted-foreground">Obrint la història…</p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex flex-col items-center justify-center h-full border-2 border-dashed border-muted-foreground/25 rounded-lg p-8"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
+      {linkError && <p className="text-sm text-destructive text-center mb-4">{linkError}</p>}
       <Upload className="h-12 w-12 text-muted-foreground mb-4" />
       <h3 className="text-lg font-semibold mb-2">Puja un fitxer GEDCOM</h3>
       <p className="text-sm text-muted-foreground text-center mb-4">
