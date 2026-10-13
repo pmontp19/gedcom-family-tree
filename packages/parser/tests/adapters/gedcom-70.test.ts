@@ -226,6 +226,17 @@ describe('Gedcom7Adapter', () => {
         { file: 'media/portrait.jpg', form: 'jpeg', title: 'Portrait' },
       ]);
     });
+
+    it('reads the scans of a source', () => {
+      const content = [
+        '0 HEAD', '1 GEDC', '2 VERS 5.5.1',
+        '0 @S1@ SOUR', '1 TITL Arbre de 1974',
+        '1 OBJE', '2 FILE actes/arbre_1974.jpg',
+        '0 TRLR',
+      ].join('\n');
+      const data = new Gedcom551Adapter().parse(buildTree(tokenizeLines(content)));
+      expect(data.sources.get('S1')!.media).toEqual([{ file: 'actes/arbre_1974.jpg' }]);
+    });
   });
 
   it('parses every official 7.0 fixture without throwing', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDateLong, getLifeYears, createIndividual } from '../src/index.js';
+import { formatDateLong, getLifeYears, createIndividual, parseName } from '../src/index.js';
 
 describe('formatDateLong (Catalan)', () => {
   it.each([
@@ -23,5 +23,16 @@ describe('getLifeYears', () => {
     expect(getLifeYears(ind)).toBe('n. 1950');
     ind.death = { type: 'DEAT', date: { year: 2020 } };
     expect(getLifeYears(ind)).toBe('1950–2020');
+  });
+});
+
+describe('parseName', () => {
+  it.each([
+    ['Isabel //', { full: 'Isabel', given: 'Isabel' }],
+    ['/Puig/', { full: 'Puig', surname: 'Puig' }],
+    ['Josep /Puig Font/ Jr.', { full: 'Josep Puig Font', given: 'Josep', surname: 'Puig Font', suffix: 'Jr.' }],
+    ['Sense barres', { full: 'Sense barres' }],
+  ])('%s', (raw, expected) => {
+    expect(parseName(raw)).toEqual(expected);
   });
 });

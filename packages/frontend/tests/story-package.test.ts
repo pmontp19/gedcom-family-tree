@@ -37,6 +37,16 @@ describe('storySubset', () => {
     expect(subset.individuals.get('I11')?.name?.full).toBe('Jordi Puig Font'); // living, shown to family
   });
 
+  it('leaves hidden people out, with the families they alone kept', () => {
+    // I11 Jordi, living: out of the package, and out of his parents' family.
+    const hidden = storySubset({ ...story, hidden: ['I11'] }, data);
+    expect(hidden.individuals.has('I11')).toBe(false);
+    for (const fam of hidden.families.values()) {
+      expect([fam.husband, fam.wife, ...fam.children]).not.toContain('I11');
+    }
+    expect(data.individuals.has('I11')).toBe(true); // the full tree is untouched
+  });
+
   it('keeps only cited sources', () => {
     expect([...subset.sources.keys()]).toEqual(['S1']);
   });
@@ -50,6 +60,23 @@ describe('readPackage', () => {
     const opened = await readPackage(new Blob([await zip.generateAsync({ type: 'uint8array' })]));
     expect(opened.story.title).toBe('Cap a la ciutat');
     expect(opened.data.individuals.get('I6')?.customTags).toBeInstanceOf(Map);
+
+    // A url riding in tree.json never survives: only the package's own files do.
+    const scanned = createStory({
+      title: 'Arbre', rootId: 'I6',
+      steps: [{ title: '1974', body: 'Text', stage: { kind: 'media', items: [{ sourceId: 'S1', file: 'arbre.jpg' }] } }],
+    });
+    const withScan = new JSZip();
+    withScan.file('story.json', JSON.stringify(scanned));
+    withScan.file('tree.json', JSON.stringify({
+      individuals: [{ ...data.individuals.get('I6'), media: [{ file: 'x.jpg', url: 'https://tracker.example/x.jpg' }] }],
+      families: [],
+      sources: [{ id: 'S1', media: [{ file: 'arbre.jpg', url: 'https://tracker.example/a.jpg' }] }],
+    }));
+    withScan.file('arbre.jpg', new Uint8Array([1]));
+    const scan = await readPackage(new Blob([await withScan.generateAsync({ type: 'uint8array' })]));
+    expect(scan.data.sources.get('S1')?.media?.[0].url).toMatch(/^blob:/);
+    expect(scan.data.individuals.get('I6')?.media[0].url).toBeUndefined();
 
     const other = new JSZip();
     other.file('gedcom.ged', '0 HEAD');
