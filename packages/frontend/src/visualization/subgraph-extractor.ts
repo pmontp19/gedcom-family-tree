@@ -95,3 +95,31 @@ export function extractSubgraph(
 
   return result;
 }
+/**
+ * The tree without some people, as if they were never in it: their own
+ * records and any family left with nobody but one spouse go too. Records are
+ * copied where touched, never mutated: the full tree stays as it was.
+ */
+export function withoutPeople(data: GedcomData, ids: Iterable<string>): GedcomData {
+  const hidden = new Set(ids);
+  if (hidden.size === 0) return data;
+  const result: GedcomData = { ...data, individuals: new Map(), families: new Map() };
+  const gone = new Set<string>();
+
+  for (const [id, fam] of data.families) {
+    const husband = fam.husband && !hidden.has(fam.husband) ? fam.husband : undefined;
+    const wife = fam.wife && !hidden.has(fam.wife) ? fam.wife : undefined;
+    const children = fam.children.filter(c => !hidden.has(c));
+    if (children.length === 0 && !(husband && wife)) { gone.add(id); continue; }
+    result.families.set(id, husband === fam.husband && wife === fam.wife && children.length === fam.children.length
+      ? fam : { ...fam, husband, wife, children });
+  }
+  for (const [id, ind] of data.individuals) {
+    if (hidden.has(id)) continue;
+    const touched = ind.fams.some(f => gone.has(f)) || ind.famc.some(f => gone.has(f));
+    result.individuals.set(id, touched
+      ? { ...ind, fams: ind.fams.filter(f => !gone.has(f)), famc: ind.famc.filter(f => !gone.has(f)) }
+      : ind);
+  }
+  return result;
+}

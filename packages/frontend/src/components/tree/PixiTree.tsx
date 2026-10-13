@@ -7,6 +7,7 @@ import { getVisibleNodes } from '@/visualization/viewport-culler';
 import { NODE_W, NODE_H, NODE_RADIUS, getTreeTheme, lighten } from "@/visualization/theme";
 import type { ThemeId, TreeTheme, TreePalette } from "@/visualization/theme";
 import type { DetailLevel } from './FamilyTree';
+import { MEDALLION_R, SERIF, branch, chordWidth, coupleBranch, drawMedallion } from './heritage';
 
 interface PixiTreeProps {
   graph: GraphData;
@@ -61,7 +62,11 @@ const badgeStyle = new TextStyle({
   letterSpacing: 0.5,
 });
 
-type NodeContainer = Container & { __redrawCard?: (selected: boolean) => void };
+type NodeContainer = Container & {
+  __redrawCard?: (selected: boolean) => void;
+  /** Own way to fade out; without it the whole node turns translucent. */
+  __dim?: (dimmed: boolean) => void;
+};
 
 // Native canvas text measurement (Pixi v8 renders text with the same engine)
 const measureCtx = document.createElement('canvas').getContext('2d');
@@ -227,7 +232,10 @@ export function PixiTree({ graph, transform, selectedId, highlightIds, onSelect,
 
 function dimOthers(nodeContainers: Map<string, Container>, highlightIds: ReadonlySet<string> | undefined) {
   for (const [id, container] of nodeContainers) {
-    container.alpha = !highlightIds?.size || highlightIds.has(id) ? 1 : 0.35;
+    const dimmed = !!highlightIds?.size && !highlightIds.has(id);
+    const node = container as NodeContainer;
+    if (node.__dim) node.__dim(dimmed);
+    else container.alpha = dimmed ? 0.35 : 1;
   }
 }
 
@@ -257,12 +265,13 @@ function rebuildScene(
   // Edges (single batched Graphics)
   const edgeGfx = new Graphics();
   world.addChild(edgeGfx);
-  drawEdges(edgeGfx, graph, palette);
+  if (theme.shape === 'medallion') drawBranches(edgeGfx, graph);
+  else drawEdges(edgeGfx, graph, palette);
 
   // Marriage year badges (sit above the edges)
   const badgeLayer = new Container();
   world.addChild(badgeLayer);
-  drawMarriageBadges(badgeLayer, graph, palette);
+  drawMarriageBadges(badgeLayer, graph, palette, theme.shape);
 
   // Nodes
   for (const node of graph.nodes) {
@@ -279,7 +288,9 @@ function rebuildScene(
   for (const node of graph.nodes) {
     if (node.type !== 'family' || !node.isAncestorStub) continue;
     if (node.x === undefined || node.y === undefined) continue;
-    const container = createAncestorStubSprite(detailLevel, palette);
+    const container = theme.shape === 'medallion'
+      ? createAncestorStubMedallions(palette)
+      : createAncestorStubSprite(detailLevel, palette);
     container.position.set(node.x, node.y);
     world.addChild(container);
     nodeContainers.set(node.id, container);
@@ -429,6 +440,8 @@ function createNodeSprite(
     container.__redrawCard = draw;
     return container;
   }
+
+  if (theme.shape === 'medallion') return createMedallionSprite(node, detailLevel, selected, onSelect, theme);
 
   if (detailLevel === 'simple') {
     const gfx = new Graphics();
@@ -677,7 +690,7 @@ function drawEdges(gfx: Graphics, graph: GraphData, palette: TreePalette) {
   }
 }
 
-function drawMarriageBadges(layer: Container, graph: GraphData, palette: TreePalette) {
+function drawMarriageBadges(layer: Container, graph: GraphData, palette: TreePalette, shape: TreeTheme['shape']) {
   for (const group of groupFamilyEdges(graph)) {
     if (group.spouses.length < 2) continue;
     const [a, b] = group.spouses;
@@ -688,8 +701,8 @@ function drawMarriageBadges(layer: Container, graph: GraphData, palette: TreePal
     if (!year) continue;
 
     const famX = (a.x + b.x) / 2;
-    const barY = a.y + HALF_H;
-    const y = barY + 27;
+    // Medallions: above the couple's branch, out of the way of the children's.
+    const y = shape === 'medallion' ? a.y - 17 : a.y + HALF_H + 27;
 
     const label = new Text({ text: String(year), style: badgeStyle.clone() });
     label.style.fill = palette.badgeText;
@@ -709,5 +722,133 @@ function drawMarriageBadges(layer: Container, graph: GraphData, palette: TreePal
     badge.addChild(gfx, label);
     badge.position.set(famX, y);
     layer.addChild(badge);
+  }
+}
+
+// ─── Heritage: medallions and branches ───────────────────────────────────────
+
+const medallionNameStyle = new TextStyle({
+  fontSize: 14.5,
+  fontStyle: 'italic',
+  fontWeight: '600',
+  fill: 0xffffff,
+  fontFamily: SERIF,
+});
+
+const medallionYearsStyle = new TextStyle({
+  fontSize: 12,
+  fill: 0xffffff,
+  fontFamily: SERIF,
+});
+
+function createMedallionSprite(
+  node: GTreeNode,
+  detailLevel: DetailLevel,
+  selected: boolean,
+  onSelect: ((id: string) => void) | undefined,
+  theme: TreeTheme,
+): NodeContainer {
+  const container = new Container() as NodeContainer;
+  const ind = node.data!;
+  const palette = theme.palette;
+  // Red ink for everyone, like the painted tree; the ring marks the selection.
+  const ink = palette.textPrimary;
+  let hovered = false;
+  let selectedNow = selected;
+
+  // Dimming fades the drawing, not the paper: branches behind stay hidden.
+  const paper = new Graphics().circle(0, 0, MEDALLION_R).fill(palette.nodeBg);
+  const art = new Container();
+  const ring = new Graphics();
+  const redraw = () => drawMedallion(ring, { selected: selectedNow, hovered, palette, ink });
+  redraw();
+  art.addChild(ring);
+  container.addChild(paper, art);
+  container.__dim = (dimmed: boolean) => { art.alpha = dimmed ? 0.35 : 1; };
+
+  if (detailLevel === 'full') {
+    // Given name, then surnames, then the years: each line centred, the block
+    // shrunk until every line fits the circle at its height.
+    const width = chordWidth(0) - 6;
+    const given = ind.name?.given || getDisplayName(ind);
+    const lines = [
+      ...wrapName(given, width, medallionNameStyle, 2),
+      ...(ind.name?.surname ? wrapName(ind.name.surname, width, medallionNameStyle, 2) : []),
+    ];
+    const years = getLifeYears(ind);
+    const LINE_H = 16.5;
+    const blockH = lines.length * LINE_H + (years ? 15 : 0);
+    const block = new Container();
+    let y = -blockH / 2;
+    let scale = 1;
+    const place = (text: string, style: TextStyle, color: number, h: number) => {
+      const s = style.clone();
+      s.fill = color;
+      const t = new Text({ text, style: s });
+      t.anchor.set(0.5, 0.5);
+      t.position.set(0, y + h / 2);
+      block.addChild(t);
+      const edge = Math.max(Math.abs(y), Math.abs(y + h));
+      const room = chordWidth(edge, 8);
+      const w = textWidth(text, style);
+      if (w > 0) scale = Math.min(scale, room > 0 ? room / w : 0.6);
+      y += h;
+    };
+    for (const line of lines) place(line, medallionNameStyle, ink, LINE_H);
+    if (years) place(years, medallionYearsStyle, palette.textMuted, 15);
+    block.scale.set(Math.max(0.6, scale));
+    art.addChild(block);
+  }
+
+  container.__redrawCard = (sel: boolean) => { selectedNow = sel; redraw(); };
+  container.eventMode = 'static';
+  container.cursor = 'pointer';
+  container.on('pointertap', () => onSelect?.(node.id));
+  container.on('pointerover', () => { hovered = true; redraw(); });
+  container.on('pointerout', () => { hovered = false; redraw(); });
+  return container;
+}
+
+/** Unknown parents: two small empty medallions. */
+function createAncestorStubMedallions(palette: TreePalette): Container {
+  const g = new Graphics();
+  for (const x of [-15, 15]) {
+    g.circle(x, 0, 11).fill({ color: palette.stubFill, alpha: 0.85 }).stroke({ color: palette.stubStroke, width: 1.5 });
+  }
+  const container = new Container();
+  container.addChild(g);
+  container.alpha = 0.8;
+  return container;
+}
+
+function drawBranches(gfx: Graphics, graph: GraphData) {
+  const at = (n: GTreeNode) => ({ x: n.x ?? 0, y: n.y ?? 0 });
+  for (const { spouses, children } of groupFamilyEdges(graph)) {
+    const positioned = spouses.filter(s => s.x !== undefined && s.y !== undefined).map(at)
+      .sort((p, q) => p.x - q.x);
+    let from: { x: number; y: number } | undefined;
+    if (positioned.length >= 2) {
+      const [l, r] = [positioned[0], positioned[positioned.length - 1]];
+      if (r.x - l.x > 2 * MEDALLION_R) coupleBranch(gfx, l.x + MEDALLION_R, r.x - MEDALLION_R, l.y);
+      from = { x: (l.x + r.x) / 2, y: l.y + 5 };
+    } else if (positioned.length === 1) {
+      from = { x: positioned[0].x, y: positioned[0].y + MEDALLION_R };
+    }
+    // No recorded parents: no branch out of empty space.
+    if (!from) continue;
+    for (const child of children) {
+      if (child.x === undefined || child.y === undefined) continue;
+      const to = { x: child.x, y: child.y - MEDALLION_R };
+      if (to.y > from.y) branch(gfx, from, to);
+    }
+  }
+
+  const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+  for (const link of graph.links) {
+    if (link.type !== 'ancestor-stub') continue;
+    const stub = nodeMap.get(link.source);
+    const person = nodeMap.get(link.target);
+    if (stub?.x === undefined || stub.y === undefined || person?.x === undefined || person.y === undefined) continue;
+    branch(gfx, { x: stub.x, y: stub.y + STUB_HALF_H }, { x: person.x, y: person.y - MEDALLION_R }, { width: 2.5, leaves: false });
   }
 }

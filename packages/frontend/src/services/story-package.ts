@@ -11,7 +11,7 @@ import JSZip from 'jszip';
 import type { GedcomData, Individual, Family, Source } from '@gedcom/shared';
 import { createGedcomData } from '@gedcom/shared';
 import { storyPersonIds, type Story } from '@gedcom/shared/story';
-import { extractSubgraph } from '@/visualization/subgraph-extractor';
+import { extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
 import { attachMedia, decodePath } from '@/services/gedzip';
 import { parseStory } from '@/services/stories';
 
@@ -22,7 +22,9 @@ interface PackageTree {
 }
 
 /** The slice of the tree a story shows. */
-export function storySubset(story: Story, data: GedcomData): GedcomData {
+export function storySubset(story: Story, fullData: GedcomData): GedcomData {
+  // Hidden people never leave the browser.
+  const data = withoutPeople(fullData, story.hidden);
   const subset = createGedcomData();
   const add = (part: GedcomData) => {
     for (const [id, ind] of part.individuals) subset.individuals.set(id, ind);
@@ -34,9 +36,13 @@ export function storySubset(story: Story, data: GedcomData): GedcomData {
   }
 
   for (const step of story.steps) {
-    const sourceId = step.stage.kind === 'document' ? step.stage.sourceId : undefined;
-    const source = sourceId ? data.sources.get(sourceId) : undefined;
-    if (source) subset.sources.set(source.id, source);
+    const { stage } = step;
+    const sourceIds = stage.kind === 'document' ? [stage.sourceId]
+      : stage.kind === 'media' ? stage.items.map(m => m.sourceId) : [];
+    for (const id of sourceIds) {
+      const source = id ? data.sources.get(id) : undefined;
+      if (source) subset.sources.set(source.id, source);
+    }
   }
   return subset;
 }
@@ -59,9 +65,9 @@ export async function buildPackage(story: Story, data: GedcomData): Promise<Blob
   for (const step of story.steps) {
     if (step.stage.kind !== 'media') continue;
     for (const item of step.stage.items) {
-      if (!item.personId || !item.file) continue;
-      const ind = subset.individuals.get(item.personId);
-      const url = ind?.media.find(m => m.file === item.file)?.url;
+      if (!item.file) continue;
+      const owner = item.personId ? subset.individuals.get(item.personId) : item.sourceId ? subset.sources.get(item.sourceId) : undefined;
+      const url = owner?.media?.find(m => m.file === item.file)?.url;
       if (url) zip.file(decodePath(item.file), await (await fetch(url)).blob());
     }
   }

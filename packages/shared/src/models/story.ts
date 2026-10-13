@@ -15,6 +15,7 @@ const xref = z.string().transform((id) => id.replace(/^@(.*)@$/, '$1'));
 /** A photo or document scan: an OBJE FILE of a person, or a direct URL. */
 const storyMedia = z.object({
   personId: xref.optional().describe('Owner of the OBJE, with `file`'),
+  sourceId: xref.optional().describe('SOUR record owning the OBJE, with `file`: a scanned document'),
   file: z.string().optional().describe('OBJE FILE reference exactly as in the tree'),
   // https only: an imported story must not point the viewer at http or javascript: URLs.
   src: z.url({ protocol: /^https$/ }).optional().describe('Direct https image URL, when the image is not in the tree'),
@@ -60,6 +61,14 @@ const stage = z.discriminatedUnion('kind', [
     basemap: z.enum(STORY_BASEMAPS).default('topografic')
       .describe('orto-1945 / orto-1956: historical aerial photos, Catalonia only, zoom in on one place'),
   }),
+  z.object({
+    kind: z.literal('stats'),
+    items: z.array(z.object({
+      value: z.string().describe('The figure as shown: "78", "8.190", "60 anys"; a leading number counts up'),
+      label: z.string(),
+      detail: z.string().optional(),
+    })).min(1).max(8),
+  }),
 ]);
 
 const storyStep = z.object({
@@ -69,6 +78,12 @@ const storyStep = z.object({
   people: z.array(xref).default([]).describe('Individual ids this step is about; highlighted'),
   highlights: z.array(z.string()).default([]).describe('Key facts, shown as callouts'),
   notes: z.array(z.string()).default([]).describe('Research notes: doubts, sources to check'),
+  context: z.array(z.object({
+    date: z.string(),
+    text: z.string(),
+    // https only: an imported story must not point the viewer at http or javascript: URLs.
+    url: z.url({ protocol: /^https$/ }).optional(),
+  })).default([]).describe('Meanwhile in history: what happened around the family at that time'),
   stage,
 });
 
@@ -78,6 +93,8 @@ export const storyDraftSchema = z.object({
   subtitle: z.string().optional(),
   rootId: xref.describe('Individual the story is about'),
   steps: z.array(storyStep).min(1),
+  hidden: z.array(xref).default([])
+    .describe('People never shown in its trees nor packaged: someone the audience should not see'),
 });
 
 export const storySchema = storyDraftSchema.extend({

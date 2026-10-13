@@ -1,4 +1,4 @@
-import type { Individual } from './individual.js';
+import type { Individual, MediaFile } from './individual.js';
 import type { Family } from './family.js';
 
 export interface GedcomHeader {
@@ -25,6 +25,8 @@ export interface Source {
   author?: string;
   publication?: string;
   text?: string;
+  /** Scans of the source itself: the page, the document. */
+  media?: MediaFile[];
 }
 
 export function createGedcomData(): GedcomData {

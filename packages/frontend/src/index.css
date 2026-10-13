@@ -157,3 +157,27 @@
     @apply bg-background text-foreground;
     }
 }
+/* Story player motion. Decorative only: with reduced motion everything is
+   simply there; the autoplay timer (.story-timer) keeps running either way. */
+@keyframes story-rise { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } }
+@keyframes story-fade { from { opacity: 0; } }
+@keyframes story-settle { from { opacity: 0; transform: scale(1.035); } }
+@keyframes story-kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.09) translate(-1.5%, -1%); } }
+@keyframes story-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes story-pop { 0% { opacity: 0; transform: scale(0); } 70% { transform: scale(1.4); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes story-drift { from { transform: translateX(0); } to { transform: translateX(-4%); } }
+@keyframes story-timer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.story-timer { transform-origin: left; animation: story-timer var(--story-duration, 10s) linear forwards; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .story-rise { animation: story-rise 700ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 110ms + 150ms); }
+  .story-fade { animation: story-fade 900ms ease-out both; animation-delay: var(--delay, 0ms); }
+  .story-settle { animation: story-settle 1100ms cubic-bezier(.2, .7, .2, 1) both; }
+  .story-kenburns { animation: story-kenburns 24s ease-out both alternate infinite; }
+  .story-drift { animation: story-drift 40s linear both alternate infinite; }
+  .story-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: story-draw 1.6s ease-in-out forwards; }
+  .story-marker { transform-box: fill-box; transform-origin: center; animation: story-pop 500ms cubic-bezier(.3, 1.4, .5, 1) both; }
+}
+
+.story-tooltip { font-family: var(--font-serif); font-size: clamp(13px, 0.85vw, 18px); animation: story-fade 400ms ease-out both; }

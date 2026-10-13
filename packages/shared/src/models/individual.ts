@@ -55,12 +55,14 @@ export function createIndividual(id: string): Individual {
 
 export function parseName(nameStr: string): Name {
   const name: Name = { full: nameStr };
-  const match = nameStr.match(/^(.+?)\s*\/(.+?)\/\s*(.*)$/);
+  // Either side may be empty: `Isabel //` (no surname known), `/Reig/`.
+  const match = nameStr.match(/^(.*?)\s*\/(.*?)\/\s*(.*)$/);
   if (match) {
-    name.given = match[1].trim();
-    name.surname = match[2].trim();
-    if (match[3]) name.suffix = match[3].trim();
-    name.full = `${name.given} ${name.surname}`.trim();
+    const [given, surname, suffix] = match.slice(1).map(s => s.trim());
+    if (given) name.given = given;
+    if (surname) name.surname = surname;
+    if (suffix) name.suffix = suffix;
+    name.full = `${given} ${surname}`.trim() || nameStr;
   }
   return name;
 }

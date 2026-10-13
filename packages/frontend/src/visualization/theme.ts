@@ -27,6 +27,8 @@ export interface TreePalette {
 
 export interface TreeTheme {
   id: ThemeId;
+  /** Cards, or the round medallions and branches of a painted family tree. */
+  shape: 'card' | 'medallion';
   canvasBg: number;
   palette: TreePalette;
   sexColors: Record<Sex, number>;
@@ -42,6 +44,7 @@ const DEFAULT_SEX_COLORS: Record<Sex, number> = {
 // bg-slate-50 / dark:bg-slate-900 container.
 const LIGHT: TreeTheme = {
   id: 'light',
+  shape: 'card',
   canvasBg: 0xf8fafc,
   palette: {
     nodeBg: 0xffffff,
@@ -62,6 +65,7 @@ const LIGHT: TreeTheme = {
 
 const DARK: TreeTheme = {
   id: 'dark',
+  shape: 'card',
   canvasBg: 0x0f172a,
   palette: {
     nodeBg: 0x1e293b,      // slate-800
@@ -84,6 +88,7 @@ const DARK: TreeTheme = {
 // Parchment, taupe frames, crimson ink names, sepia dates, branch edges.
 const HERITAGE: TreeTheme = {
   id: 'heritage',
+  shape: 'medallion',
   canvasBg: 0xf3e4c2,      // parchment
   palette: {
     nodeBg: 0xf8eed6,      // card cream

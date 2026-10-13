@@ -57,11 +57,12 @@ const basename = (path: string) => path.slice(path.lastIndexOf('/') + 1);
  * exporters that flatten the media folder still match on the file name.
  */
 export function attachMedia(data: GedcomData, media: Map<string, string>): void {
-  if (media.size === 0) return;
+  // No early return on an empty map: a url that came along (a package's
+  // tree.json) must never survive unmatched.
   const byName = new Map([...media].map(([path, url]) => [basename(path), url]));
 
-  for (const ind of data.individuals.values()) {
-    for (const m of ind.media) {
+  for (const owner of [...data.individuals.values(), ...data.sources.values()]) {
+    for (const m of owner.media ?? []) {
       const path = decodePath(m.file);
       m.url = media.get(path) ?? byName.get(basename(path));
     }

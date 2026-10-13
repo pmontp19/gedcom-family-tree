@@ -350,6 +350,9 @@ export abstract class BaseAdapter {
         case 'TEXT':
           source.text = child.data;
           break;
+        case 'OBJE':
+          (source.media ??= []).push(...this.resolveMedia(child));
+          break;
       }
     }
 

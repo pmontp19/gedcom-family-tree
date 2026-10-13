@@ -95,6 +95,10 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
               const xs = children.map(c => c!.x ?? 0);
               const midX = xs.reduce((a, b) => a + b, 0) / xs.length;
               const minY = Math.min(...children.map(c => c!.y ?? 0));
+              // The row above may already hold someone there: a stub would sit on them.
+              const taken = rawGraph.nodes.some(n => n.type === 'individual' && n.y === minY - GEN_H
+                && Math.abs((n.x ?? 0) - midX) < NODE_W / 2 + 40);
+              if (taken) continue;
               rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: minY - GEN_H });
               for (const indId of indIds) {
                 rawGraph.links.push({ source: stubId, target: indId, type: 'ancestor-stub' });
@@ -257,7 +261,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       <div
         ref={canvasContainerRef}
         className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing"
-        style={{ touchAction: 'none', background: hexString(getTreeTheme(themeId).canvasBg) }}
+        style={{ touchAction: 'none', background: canvasBackground(themeId) }}
       >
         <PixiTree
           graph={graph}
@@ -272,3 +276,10 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     );
   }
 );
+
+/** Painted trees sit on aged paper: lighter in the middle, darker at the edges. */
+function canvasBackground(themeId?: ThemeId): string {
+  const theme = getTreeTheme(themeId);
+  if (theme.shape !== 'medallion') return hexString(theme.canvasBg);
+  return `radial-gradient(ellipse at 50% 45%, #f8eed6 0%, ${hexString(theme.canvasBg)} 55%, #e2c99b 100%)`;
+}
