@@ -31,6 +31,8 @@ export interface LayoutRequest {
   type: 'layout';
   id: number;
   graph: SerializableGraphData;
+  /** Lay out around this person (hourglass) instead of the whole forest. */
+  focusId?: string;
 }
 
 export interface LayoutResponse {
