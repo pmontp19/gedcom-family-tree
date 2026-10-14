@@ -61,7 +61,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       const buildAndLayout = async () => {
         try {
           const rawGraph = buildDAG(data);
-          const positions = await runLayout(rawGraph);
+          const positions = await runLayout(rawGraph, focusIdRef.current);
           if (cancelled) return;
 
           // Apply positions back to nodes
