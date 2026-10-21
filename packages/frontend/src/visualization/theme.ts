@@ -25,6 +25,9 @@ export interface TreePalette {
   stubFill: number;
 }
 
+/** Radius of a painted tree's medallion. */
+export const MEDALLION_R = 58;
+
 export interface TreeTheme {
   id: ThemeId;
   /** Cards, or the round medallions and branches of a painted family tree. */

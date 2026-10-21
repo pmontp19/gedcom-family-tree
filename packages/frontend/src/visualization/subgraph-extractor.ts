@@ -96,6 +96,78 @@ export function extractSubgraph(
   return result;
 }
 /**
+ * Someone's whole tree: every ancestor, and everyone descending from their
+ * parents, so brothers and sisters come along. Cousins' branches stay out:
+ * the full file would lay out as one long, flat strip.
+ */
+export function extractFamilyTree(data: GedcomData, id: string): GedcomData {
+  const parents = (data.individuals.get(id)?.famc ?? [])
+    .flatMap(f => [data.families.get(f)?.husband, data.families.get(f)?.wife])
+    .filter((p): p is string => !!p);
+  const result = createGedcomData();
+  result.header = data.header;
+  result.sources = data.sources;
+  result.notes = data.notes;
+  for (const from of parents.length ? parents : [id]) {
+    const part = extractSubgraph(data, from, Infinity);
+    for (const [k, v] of part.individuals) result.individuals.set(k, v);
+    for (const [k, v] of part.families) result.families.set(k, v);
+  }
+  return result;
+}
+
+/**
+ * The direct line from someone up to one of their ancestors: each generation's
+ * couple and nothing else. With `alsoFrom`, a second descendant's line up to
+ * the same ancestor joins it: two cousins and what they share. Null when the
+ * ancestor is not theirs.
+ */
+export function extractLineage(data: GedcomData, fromId: string, toId: string, alsoFrom?: string): GedcomData | null {
+  const line = lineage(data, fromId, toId);
+  if (!line || !alsoFrom) return line;
+  const other = lineage(data, alsoFrom, toId);
+  if (!other) return null;
+  for (const [id, ind] of other.individuals) line.individuals.set(id, ind);
+  for (const [id, fam] of other.families) {
+    // Where both lines meet, that couple has both children on show.
+    const mine = line.families.get(id);
+    line.families.set(id, mine ? { ...fam, children: [...new Set([...mine.children, ...fam.children])] } : fam);
+  }
+  return line;
+}
+
+function lineage(data: GedcomData, fromId: string, toId: string): GedcomData | null {
+  // BFS up the parents: the shortest line wins when cousins married.
+  const via = new Map<string, { child: string; fam: string } | null>([[fromId, null]]);
+  const queue = [fromId];
+  while (queue.length && !via.has(toId)) {
+    const id = queue.shift()!;
+    for (const famId of data.individuals.get(id)?.famc ?? []) {
+      const fam = data.families.get(famId);
+      for (const parent of [fam?.husband, fam?.wife]) {
+        if (parent && !via.has(parent)) { via.set(parent, { child: id, fam: famId }); queue.push(parent); }
+      }
+    }
+  }
+  if (!via.has(toId)) return null;
+
+  const result = createGedcomData();
+  result.header = data.header;
+  result.sources = data.sources;
+  result.notes = data.notes;
+  const addInd = (id?: string) => { const ind = id && data.individuals.get(id); if (ind) result.individuals.set(ind.id, ind); };
+  addInd(fromId);
+  for (let step = via.get(toId); step; step = via.get(step.child)) {
+    const fam = data.families.get(step.fam)!;
+    // Only the child on the line: their siblings would widen every row.
+    result.families.set(fam.id, { ...fam, children: [step.child] });
+    addInd(fam.husband);
+    addInd(fam.wife);
+  }
+  return result;
+}
+
+/**
  * The tree without some people, as if they were never in it: their own
  * records and any family left with nobody but one spouse go too. Records are
  * copied where touched, never mutated: the full tree stays as it was.

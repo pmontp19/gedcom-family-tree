@@ -5,7 +5,7 @@ import { getDisplayName, getLifeYears } from '@gedcom/shared';
 import { ChevronLeft, ChevronRight, X, StickyNote, ScrollText, ImageOff, Play, Pause, Maximize, Minimize, Volume2, VolumeX, Landmark } from 'lucide-react';
 import { useNarration, narrationSupported } from './useNarration';
 import { Button } from '@/components/ui/button';
-import { extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
+import { extractFamilyTree, extractLineage, extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
 import type { ThemeId } from '@/visualization/theme';
 
 const FamilyTree = lazy(() => import('@/components/tree/FamilyTree').then(m => ({ default: m.FamilyTree })));
@@ -220,7 +220,8 @@ function Cover({ story, data, onStart, onClose }: {
   story: Story; data: GedcomData; onStart: (autoplay: boolean) => void; onClose: () => void;
 }) {
   const root = data.individuals.get(story.rootId);
-  const years = story.steps.map(s => Number(yearOf(s.date))).filter(Boolean);
+  // Every year a date names: «1961-2026» ends the story in 2026, not 1961.
+  const years = story.steps.flatMap(s => s.date?.match(/\b(1[0-9]{3}|20[0-9]{2})\b/g) ?? []).map(Number);
   const span = years.length > 1 ? `${Math.min(...years)} · ${Math.max(...years)}` : '';
   // The years the story walks through, drifting behind the title.
   const ribbon = [...new Set(story.steps.map(s => yearOf(s.date)).filter(Boolean))].sort().join('   ');
@@ -363,7 +364,7 @@ function Stage({ stage, stepKey, people, data, themeId }: {
   }
   return (
     <div key={stepKey} className="story-settle absolute inset-0">
-      {stage.kind === 'tree' && <TreeStage focusId={stage.focusId} generations={stage.generations} people={people} data={data} themeId={themeId} />}
+      {stage.kind === 'tree' && <TreeStage {...stage} people={people} data={data} themeId={themeId} />}
       {stage.kind === 'media' && <MediaStage items={stage.items} data={data} />}
       {stage.kind === 'document' && <DocumentStage {...stage} data={data} />}
       {stage.kind === 'stats' && <StatsStage items={stage.items} />}
@@ -371,18 +372,21 @@ function Stage({ stage, stepKey, people, data, themeId }: {
   );
 }
 
-function TreeStage({ focusId, generations, people, data, themeId }: {
-  focusId: string; generations: number; people: string[]; data: GedcomData; themeId: ThemeId;
+function TreeStage({ focusId, generations, lineageTo, alsoFrom, descendants, whole, people, data, themeId }: {
+  focusId: string; generations: number; lineageTo?: string; alsoFrom?: string; descendants: boolean; whole: boolean; people: string[]; data: GedcomData; themeId: ThemeId;
 }) {
-  const view = useMemo(
-    () => data.individuals.has(focusId) ? extractSubgraph(data, focusId, generations) : null,
-    [data, focusId, generations],
-  );
+  const view = useMemo(() => {
+    if (!data.individuals.has(focusId)) return null;
+    if (whole) return extractFamilyTree(data, focusId);
+    if (descendants) return extractSubgraph(data, focusId, Infinity);
+    if (lineageTo) return extractLineage(data, focusId, lineageTo, alsoFrom);
+    return extractSubgraph(data, focusId, generations);
+  }, [data, focusId, generations, lineageTo, alsoFrom, descendants, whole]);
   const highlightIds = useMemo(() => new Set(people), [people]);
-  if (!view) return <Missing text="Aquesta persona no és a l'arbre carregat" />;
+  if (!view) return <Missing text={lineageTo ? 'Aquest avantpassat no és a la línia' : "Aquesta persona no és a l'arbre carregat"} />;
   return (
     <Suspense fallback={null}>
-      <FamilyTree data={view} focusId={focusId} highlightIds={highlightIds} themeId={themeId} />
+      <FamilyTree data={view} focusId={focusId} flyTo={whole || descendants ? 'all' : lineageTo} layout={whole || descendants ? 'crown' : alsoFrom ? 'layered' : undefined} invert={descendants} highlightIds={highlightIds} themeId={themeId} />
     </Suspense>
   );
 }
@@ -469,8 +473,10 @@ type StatItem = Extract<StoryStage, { kind: 'stats' }>['items'][number];
 
 function StatsStage({ items }: { items: StatItem[] }) {
   return (
-    <div className="h-full overflow-y-auto flex items-center justify-center p-6 md:p-10">
-      <dl className={`w-full max-w-4xl grid gap-4 md:gap-6 ${items.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+    // m-auto, not items-center: a centred flex child taller than the stage
+    // loses its top to the overflow, out of reach of the scroll.
+    <div className="h-full overflow-y-auto flex p-6 md:p-10">
+      <dl className={`m-auto w-full grid gap-4 md:gap-6 ${items.length > 1 ? 'sm:grid-cols-2' : ''} ${items.length > 6 ? 'max-w-6xl lg:grid-cols-3' : 'max-w-4xl'}`}>
         {items.map((item, i) => (
           <div key={i} className="story-rise rounded-md border bg-card text-card-foreground shadow-md p-5 md:p-6 xl:p-8" style={{ '--i': i } as CSSProperties}>
             <dd className="font-serif text-5xl xl:text-[clamp(3rem,4vw,5.5rem)] leading-none tabular-nums">

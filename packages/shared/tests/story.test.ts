@@ -14,7 +14,7 @@ describe('story schema', () => {
   it('strips @ from ids, fills defaults and stamps id + date', () => {
     const story = createStory(draft);
     expect(story.rootId).toBe('I6');
-    expect(story.steps[0].stage).toEqual({ kind: 'tree', focusId: 'I1', generations: 2 });
+    expect(story.steps[0].stage).toEqual({ kind: 'tree', focusId: 'I1', generations: 2, descendants: false, whole: false });
     expect(story.steps[0]).toMatchObject({ people: [], highlights: [], notes: [] });
     expect(story.id).toMatch(/^[0-9a-f-]{36}$/);
   });

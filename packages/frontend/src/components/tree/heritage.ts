@@ -6,7 +6,8 @@
 import { Graphics } from 'pixi.js';
 import type { TreePalette } from '@/visualization/theme';
 
-export const MEDALLION_R = 58;
+export { MEDALLION_R } from '@/visualization/theme';
+import { MEDALLION_R } from '@/visualization/theme';
 export const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
 
 const FRAME = 0xa8977f;   // taupe ring
@@ -85,8 +86,8 @@ export function branch(g: Graphics, a: Pt, b: Pt, opts: { width?: number; leaves
 }
 
 /** The bond between a couple: a short branch that sags a little. */
-export function coupleBranch(g: Graphics, x1: number, x2: number, y: number) {
-  const path = () => g.moveTo(x1, y).quadraticCurveTo((x1 + x2) / 2, y + 7, x2, y);
+export function coupleBranch(g: Graphics, x1: number, y1: number, x2: number, y2: number) {
+  const path = () => g.moveTo(x1, y1).quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + 7, x2, y2);
   path().stroke({ color: BARK, width: 4, cap: 'round' });
   path().stroke({ color: BARK_LIGHT, width: 1.4, cap: 'round' });
 }

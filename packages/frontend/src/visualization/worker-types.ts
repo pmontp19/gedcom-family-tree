@@ -1,3 +1,4 @@
+import type { LayoutStyle } from './dag-builder';
 import type { Individual, Family } from '@gedcom/shared';
 
 interface SerializableTreeNode {
@@ -33,6 +34,8 @@ export interface LayoutRequest {
   graph: SerializableGraphData;
   /** Lay out around this person (hourglass) instead of the whole forest. */
   focusId?: string;
+  style?: LayoutStyle;
+  invert?: boolean;
 }
 
 export interface LayoutResponse {

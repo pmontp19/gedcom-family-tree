@@ -42,6 +42,14 @@ const stage = z.discriminatedUnion('kind', [
     kind: z.literal('tree'),
     focusId: xref.describe('Individual the tree centres on'),
     generations: z.number().int().min(1).max(6).default(2),
+    lineageTo: xref.optional()
+      .describe('An ancestor of focusId: only the direct line up to them, and the camera climbs it'),
+    alsoFrom: xref.optional()
+      .describe('With lineageTo: a second descendant whose own line up to it shows too, as for two cousins'),
+    descendants: z.boolean().default(false)
+      .describe('Everyone descending from focusId, painted like the 1974 tree (them at the trunk, the youngest in the crown); the camera pulls back'),
+    whole: z.boolean().default(false)
+      .describe('All of focusId\'s ancestors, siblings and their families: the camera starts on them and pulls back until all show'),
   }),
   z.object({
     kind: z.literal('media'),
@@ -125,7 +133,11 @@ export function storyPersonIds(story: z.output<typeof storyDraftSchema>): Set<st
   const ids = new Set([story.rootId]);
   for (const step of story.steps) {
     for (const id of step.people) ids.add(id);
-    if (step.stage.kind === 'tree') ids.add(step.stage.focusId);
+    if (step.stage.kind === 'tree') {
+      ids.add(step.stage.focusId);
+      if (step.stage.lineageTo) ids.add(step.stage.lineageTo);
+      if (step.stage.alsoFrom) ids.add(step.stage.alsoFrom);
+    }
     if (step.stage.kind === 'media') {
       for (const m of step.stage.items) if (m.personId) ids.add(m.personId);
     }
