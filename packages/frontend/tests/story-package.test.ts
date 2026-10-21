@@ -7,6 +7,7 @@ import { parseGedcom } from '@gedcom/parser';
 import { createStory } from '@gedcom/shared/story';
 import { storySubset, readPackage } from '@/services/story-package';
 import { isLiving } from '@/services/research';
+import { extractLineage } from '@/visualization/subgraph-extractor';
 
 // demo-catala.ged: Josep I1 → Ramon I3 → Joan I6 → Antoni I9 → Jordi I11 (born 1956, no death).
 const data = parseGedcom(readFileSync(join(__dirname, '../../../demo-catala.ged'), 'utf-8'));
@@ -49,6 +50,26 @@ describe('storySubset', () => {
 
   it('keeps only cited sources', () => {
     expect([...subset.sources.keys()]).toEqual(['S1']);
+  });
+});
+
+describe('extractLineage', () => {
+  it('keeps one couple per generation, only the child on the line', () => {
+    const line = extractLineage(data, 'I11', 'I1')!;
+    for (const id of ['I1', 'I3', 'I6', 'I9', 'I11']) expect(line.individuals.has(id)).toBe(true);
+    expect(line.individuals.has('I4')).toBe(false); // an aunt, off the line
+    for (const fam of line.families.values()) expect(fam.children).toHaveLength(1);
+    expect(data.families.get([...line.families.keys()][0])!.children.length).toBeGreaterThan(0); // untouched
+    expect(extractLineage(data, 'I1', 'I11')).toBeNull(); // a descendant is not an ancestor
+  });
+
+  it('packages whole families for a lineage step, all ancestors and siblings for a whole-tree step', () => {
+    const lineage = createStory({ title: 'L', rootId: 'I11', steps: [{ title: 'L', body: 'T', stage: { kind: 'tree', focusId: 'I11', lineageTo: 'I1' } }] });
+    expect(storySubset(lineage, data).individuals.has('I1')).toBe(true);
+    const whole = createStory({ title: 'W', rootId: 'I11', steps: [{ title: 'W', body: 'T', stage: { kind: 'tree', focusId: 'I11', whole: true } }] });
+    const all = storySubset(whole, data);
+    for (const id of ['I1', 'I3', 'I6', 'I9', 'I11']) expect(all.individuals.has(id)).toBe(true);
+    expect(all.individuals.has('I4')).toBe(false); // an aunt: a cousin's branch, not the line
   });
 });
 

@@ -16,6 +16,8 @@ interface FamilyTreeProps {
   highlightIds?: ReadonlySet<string>;
   /** Who the view was built around: the first view centres on them when the tree doesn't fit. */
   focusId?: string;
+  /** After the first view, glide the camera from the focus to this person, or pull back to the whole tree. */
+  flyTo?: string | 'all';
   onSelect?: (individual: Individual) => void;
   themeId?: ThemeId;
 }
@@ -35,7 +37,7 @@ function getDetailLevel(k: number): DetailLevel {
 }
 
 export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
-  function FamilyTree({ data, selectedId, highlightIds, focusId, onSelect, themeId }, ref) {
+  function FamilyTree({ data, selectedId, highlightIds, focusId, flyTo, onSelect, themeId }, ref) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -44,7 +46,8 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     const { runLayout } = useLayoutWorker();
     // Read by the first fit only; a new focus always comes with a new graph.
     const focusIdRef = useRef(focusId);
-    useEffect(() => { focusIdRef.current = focusId; });
+    const flyToRef = useRef(flyTo);
+    useEffect(() => { focusIdRef.current = focusId; flyToRef.current = flyTo; });
 
     // Reset layout state when the data changes (during render, not in an effect)
     const [prevData, setPrevData] = useState(data);
@@ -61,7 +64,9 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       const buildAndLayout = async () => {
         try {
           const rawGraph = buildDAG(data);
-          const positions = await runLayout(rawGraph, focusIdRef.current);
+          // The hourglass places the focus's brothers and sisters rows below
+          // them: a whole tree, which has them, takes the layered layout.
+          const positions = await runLayout(rawGraph, flyToRef.current === 'all' ? undefined : focusIdRef.current);
           if (cancelled) return;
 
           // Apply positions back to nodes
@@ -215,7 +220,8 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       // (a phone would otherwise open on blank cards). When that doesn't fit,
       // centre on the focus person; "Ajusta la vista" still shows everything.
       if (individualNodes.length > 0) {
-        const scale = Math.min(1, Math.max(fitScale, MIN_SCALE, READABLE_SCALE));
+        // A story flight opens close enough to read the names it starts on.
+        const scale = flyToRef.current ? 1 : Math.min(1, Math.max(fitScale, MIN_SCALE, READABLE_SCALE));
         const focus = scale > fitScale ? individualNodes.find(n => n.id === focusIdRef.current) : undefined;
         const cx = focus?.x ?? bounds.minX + bounds.width / 2;
         const cy = focus?.y ?? bounds.minY + bounds.height / 2;
@@ -225,7 +231,37 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
         sel.call(zoomBehavior.transform, zoomBehavior.constrain()(t, [[0, 0], [cw, ch]], zoomBehavior.translateExtent()));
       }
 
+      // The camera move a story asks for: climb to an ancestor at reading
+      // zoom, or pull back to the whole tree. Any touch hands the camera back.
+      let raf = 0, timer = 0;
+      const stopFlight = () => { cancelAnimationFrame(raf); clearTimeout(timer); };
+      const target = flyToRef.current === 'all' ? { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2, k: fitScale }
+        : individualNodes.find(n => n.id === flyToRef.current);
+      if (target) {
+        const from = zoomTransform(container);
+        const k0 = from.k, k1 = 'k' in target ? Math.max(target.k, MIN_SCALE) : k0;
+        const x0 = (cw / 2 - from.x) / k0, y0 = (ch / 2 - from.y) / k0;
+        const x1 = target.x ?? x0, y1 = target.y ?? y0;
+        // Longer trips take longer: about a second per generation climbed.
+        const ms = 'k' in target ? 14000 : Math.min(16000, Math.max(5000, Math.hypot(x1 - x0, y1 - y0) / GEN_H * 1100));
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const frame = (t0: number) => (now: number) => {
+          const p = reduced ? 1 : Math.min(1, (now - t0) / ms);
+          const e = p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
+          const k = k0 * (k1 / k0) ** e;
+          const x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e;
+          sel.call(zoomBehavior.transform, zoomIdentity.translate(cw / 2 - x * k, ch / 2 - y * k).scale(k));
+          if (p < 1) raf = requestAnimationFrame(frame(t0));
+        };
+        timer = window.setTimeout(() => { raf = requestAnimationFrame(now => frame(now)(now)); }, 3000);
+        container.addEventListener('pointerdown', stopFlight);
+        container.addEventListener('wheel', stopFlight);
+      }
+
       return () => {
+        stopFlight();
+        container.removeEventListener('pointerdown', stopFlight);
+        container.removeEventListener('wheel', stopFlight);
         container.removeEventListener('wheel', onWheel);
         sel.on('.zoom', null);
       };

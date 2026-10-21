@@ -5,7 +5,7 @@ import { getDisplayName, getLifeYears } from '@gedcom/shared';
 import { ChevronLeft, ChevronRight, X, StickyNote, ScrollText, ImageOff, Play, Pause, Maximize, Minimize, Volume2, VolumeX, Landmark } from 'lucide-react';
 import { useNarration, narrationSupported } from './useNarration';
 import { Button } from '@/components/ui/button';
-import { extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
+import { extractFamilyTree, extractLineage, extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
 import type { ThemeId } from '@/visualization/theme';
 
 const FamilyTree = lazy(() => import('@/components/tree/FamilyTree').then(m => ({ default: m.FamilyTree })));
@@ -363,7 +363,7 @@ function Stage({ stage, stepKey, people, data, themeId }: {
   }
   return (
     <div key={stepKey} className="story-settle absolute inset-0">
-      {stage.kind === 'tree' && <TreeStage focusId={stage.focusId} generations={stage.generations} people={people} data={data} themeId={themeId} />}
+      {stage.kind === 'tree' && <TreeStage {...stage} people={people} data={data} themeId={themeId} />}
       {stage.kind === 'media' && <MediaStage items={stage.items} data={data} />}
       {stage.kind === 'document' && <DocumentStage {...stage} data={data} />}
       {stage.kind === 'stats' && <StatsStage items={stage.items} />}
@@ -371,18 +371,20 @@ function Stage({ stage, stepKey, people, data, themeId }: {
   );
 }
 
-function TreeStage({ focusId, generations, people, data, themeId }: {
-  focusId: string; generations: number; people: string[]; data: GedcomData; themeId: ThemeId;
+function TreeStage({ focusId, generations, lineageTo, whole, people, data, themeId }: {
+  focusId: string; generations: number; lineageTo?: string; whole: boolean; people: string[]; data: GedcomData; themeId: ThemeId;
 }) {
-  const view = useMemo(
-    () => data.individuals.has(focusId) ? extractSubgraph(data, focusId, generations) : null,
-    [data, focusId, generations],
-  );
+  const view = useMemo(() => {
+    if (!data.individuals.has(focusId)) return null;
+    if (whole) return extractFamilyTree(data, focusId);
+    if (lineageTo) return extractLineage(data, focusId, lineageTo);
+    return extractSubgraph(data, focusId, generations);
+  }, [data, focusId, generations, lineageTo, whole]);
   const highlightIds = useMemo(() => new Set(people), [people]);
-  if (!view) return <Missing text="Aquesta persona no és a l'arbre carregat" />;
+  if (!view) return <Missing text={lineageTo ? 'Aquest avantpassat no és a la línia' : "Aquesta persona no és a l'arbre carregat"} />;
   return (
     <Suspense fallback={null}>
-      <FamilyTree data={view} focusId={focusId} highlightIds={highlightIds} themeId={themeId} />
+      <FamilyTree data={view} focusId={focusId} flyTo={whole ? 'all' : lineageTo} highlightIds={highlightIds} themeId={themeId} />
     </Suspense>
   );
 }

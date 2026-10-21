@@ -431,9 +431,10 @@ function createNodeSprite(
   if (detailLevel === 'dot') {
     const gfx = new Graphics();
     const draw = (sel: boolean) => {
-      gfx.clear().circle(0, 0, 4.5).fill(sexColor);
+      // Dots show below 0.15 zoom: a few screen pixels there, not a speck.
+      gfx.clear().circle(0, 0, 30).fill(sexColor);
       // A ring big enough to spot at the zoom level that shows dots.
-      if (sel) gfx.circle(0, 0, 14).stroke({ color: lighten(sexColor, 0.25), width: 6 });
+      if (sel) gfx.circle(0, 0, 56).stroke({ color: lighten(sexColor, 0.25), width: 18 });
     };
     draw(selected);
     container.addChild(gfx);
@@ -535,7 +536,7 @@ function createAncestorStubSprite(detailLevel: DetailLevel, palette: TreePalette
   const container = new Container();
   if (detailLevel === 'dot') {
     const gfx = new Graphics();
-    gfx.circle(0, 0, 3).fill(palette.edgeMarriage);
+    gfx.circle(0, 0, 14).fill(palette.edgeMarriage);
     container.addChild(gfx);
     return container;
   }

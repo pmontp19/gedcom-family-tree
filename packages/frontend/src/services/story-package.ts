@@ -13,7 +13,7 @@ import JSZip from 'jszip';
 import type { GedcomData, Individual, Family, Source } from '@gedcom/shared';
 import { createGedcomData } from '@gedcom/shared';
 import { storyPersonIds, type Story } from '@gedcom/shared/story';
-import { extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
+import { extractFamilyTree, extractLineage, extractSubgraph, withoutPeople } from '@/visualization/subgraph-extractor';
 import { attachMedia, decodePath } from '@/services/gedzip';
 import { parseStory } from '@/services/stories';
 
@@ -34,7 +34,13 @@ export function storySubset(story: Story, fullData: GedcomData): GedcomData {
   };
   for (const id of storyPersonIds(story)) add(extractSubgraph(data, id, 0));
   for (const step of story.steps) {
-    if (step.stage.kind === 'tree') add(extractSubgraph(data, step.stage.focusId, step.stage.generations));
+    const { stage } = step;
+    if (stage.kind !== 'tree') continue;
+    if (stage.whole) add(extractFamilyTree(data, stage.focusId));
+    else if (stage.lineageTo) {
+      // Whole families, not the trimmed line: another step may show them in full.
+      for (const id of extractLineage(data, stage.focusId, stage.lineageTo)?.individuals.keys() ?? []) add(extractSubgraph(data, id, 0));
+    } else add(extractSubgraph(data, stage.focusId, stage.generations));
   }
 
   for (const step of story.steps) {
