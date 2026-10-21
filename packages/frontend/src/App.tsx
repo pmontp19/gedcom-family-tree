@@ -42,7 +42,7 @@ function App() {
   const {
     data, viewData, rawData, filename, format, screen, parsing,
     selectedId, focusId, personPanelOpen, loadFile, selectPerson, togglePersonPanel,
-    setFocus, viewAll, changeFocus, clear, playingStory, playStory, openPackage,
+    setFocus, viewAll, changeFocus, clear, playingStory, playStory, openPackage, audioAssets,
   } = useTreeStore();
   const [agentOpen, setAgentOpen] = useState(false);
   // The AI reads the GEDCOM uploaded with it: a story package has none.
@@ -110,7 +110,7 @@ function App() {
   if (playingStory) {
     return (
       <Suspense fallback={<Spinner />}>
-        <StoryPlayer story={playingStory} data={data} themeId={theme} onClose={() => playStory(null)} />
+        <StoryPlayer story={playingStory} data={data} themeId={theme} audio={audioAssets} onClose={() => playStory(null)} />
       </Suspense>
     );
   }

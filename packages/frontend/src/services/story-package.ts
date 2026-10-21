@@ -6,6 +6,8 @@
 //   story.json   the story
 //   tree.json    individuals, families and sources it needs
 //   media/...    the photos its media steps show, at their OBJE FILE path
+//   audio/...    recorded narration its steps play (step.audio), authored
+//                outside the app: a package with it just carries it along
 
 import JSZip from 'jszip';
 import type { GedcomData, Individual, Family, Source } from '@gedcom/shared';
@@ -75,12 +77,15 @@ export async function buildPackage(story: Story, data: GedcomData): Promise<Blob
 }
 
 const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
+const AUDIO_RE = /\.(wav|mp3|m4a|ogg|opus|flac)$/i;
 
 export interface OpenedPackage {
   story: Story;
   data: GedcomData;
   /** zip path → blob URL. The caller owns revoking these. */
   media: Map<string, string>;
+  /** zip path → blob URL for step.audio files. Same ownership as `media`. */
+  audio: Map<string, string>;
 }
 
 /** Throws with a readable message when the file is not a story package. */
@@ -111,16 +116,19 @@ export async function readPackage(file: Blob): Promise<OpenedPackage> {
   for (const src of tree.sources ?? []) data.sources.set(src.id, src);
 
   const media = new Map<string, string>();
+  const audio = new Map<string, string>();
   try {
     for (const entry of Object.values(zip.files)) {
-      if (entry.dir || !IMAGE_RE.test(entry.name)) continue;
-      media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
+      if (entry.dir) continue;
+      if (IMAGE_RE.test(entry.name)) media.set(entry.name, URL.createObjectURL(await entry.async('blob')));
+      else if (AUDIO_RE.test(entry.name)) audio.set(entry.name, URL.createObjectURL(await entry.async('blob')));
     }
     attachMedia(data, media);
   } catch (err) {
-    // The caller never gets the map, so nobody else can revoke these.
+    // The caller never gets the maps, so nobody else can revoke these.
     for (const url of media.values()) URL.revokeObjectURL(url);
+    for (const url of audio.values()) URL.revokeObjectURL(url);
     throw err;
   }
-  return { story, data, media };
+  return { story, data, media, audio };
 }

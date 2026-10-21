@@ -166,6 +166,7 @@ interface TreeState {
   lintResult: GedlintResult | null;
   linting: boolean;
   mediaUrls: string[];
+  audioAssets: Map<string, string>;
   stories: Story[];
   playingStory: Story | null;
   interviews: Interviews;
@@ -200,6 +201,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   lintResult: null,
   linting: false,
   mediaUrls: [],
+  audioAssets: new Map(),
   stories: [],
   playingStory: null,
   interviews: {},
@@ -209,7 +211,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const load = ++loadSeq;
     const current = () => load === loadSeq;
     revokeMedia(get().mediaUrls);
-    set({ parsing: true, lintResult: null, linting: true, mediaUrls: [...(media?.values() ?? [])] });
+    for (const url of get().audioAssets.values()) URL.revokeObjectURL(url);
+    set({ parsing: true, lintResult: null, linting: true, mediaUrls: [...(media?.values() ?? [])], audioAssets: new Map() });
     // Health check runs beside the parse: the tree renders without waiting.
     runGedlint(bytes)
       .then((lintResult) => { if (current()) set({ lintResult, linting: false }); })
@@ -253,9 +256,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     });
   },
 
-  openPackage: ({ story, data, media }, filename) => {
+  openPackage: ({ story, data, media, audio }, filename) => {
     loadSeq++; // drop any load still in flight
     revokeMedia(get().mediaUrls);
+    for (const url of get().audioAssets.values()) URL.revokeObjectURL(url);
     set({
       rawData: null,
       filename,
@@ -269,6 +273,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       lintResult: null,
       linting: false,
       mediaUrls: [...media.values()],
+      audioAssets: audio,
       stories: [story],
       playingStory: story,
       interviews: {},
@@ -316,6 +321,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   clear: () => {
     loadSeq++; // drop any load still in flight
     revokeMedia(get().mediaUrls);
+    for (const url of get().audioAssets.values()) URL.revokeObjectURL(url);
     set({
       rawData: null,
       filename: null,
@@ -329,6 +335,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       lintResult: null,
       linting: false,
       mediaUrls: [],
+      audioAssets: new Map(),
       stories: [],
       playingStory: null,
       interviews: {},
