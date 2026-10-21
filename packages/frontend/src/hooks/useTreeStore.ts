@@ -265,8 +265,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       filename,
       format: 'Història',
       data,
-      viewData: data,
-      focusId: story.rootId,
+      // The package holds scattered pieces of the tree: the view after the
+      // story is the family around who it is about, not all the pieces in a row.
+      viewData: data.individuals.has(story.rootId) ? extractSubgraph(data, story.rootId, get().maxGenerations) : data,
+      focusId: data.individuals.has(story.rootId) ? story.rootId : null,
       selectedId: null,
       screen: 'tree-view',
       parsing: false,

@@ -43,7 +43,7 @@ export function useLayoutWorker() {
     return () => worker.terminate();
   }, []);
 
-  const runLayout = useCallback((graph: GraphData): Promise<NodePosition[]> => {
+  const runLayout = useCallback((graph: GraphData, focusId?: string): Promise<NodePosition[]> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current) {
         reject(new Error('Worker not initialized'));
@@ -51,7 +51,7 @@ export function useLayoutWorker() {
       }
       const id = ++seqRef.current;
       pendingRef.current.set(id, { resolve, reject });
-      const msg: LayoutRequest = { type: 'layout', id, graph: serializeGraph(graph) };
+      const msg: LayoutRequest = { type: 'layout', id, graph: serializeGraph(graph), focusId };
       workerRef.current.postMessage(msg);
     });
   }, []);
