@@ -20,6 +20,8 @@ interface FamilyTreeProps {
   flyTo?: string | 'all';
   /** Around the focus, the ancestors packed into a crown; or the layered forest, for lines that meet. */
   layout?: 'crown' | 'layered';
+  /** Painted theme: the youngest at the top, like the 1974 tree. */
+  invert?: boolean;
   onSelect?: (individual: Individual) => void;
   themeId?: ThemeId;
 }
@@ -39,7 +41,7 @@ function getDetailLevel(k: number): DetailLevel {
 }
 
 export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
-  function FamilyTree({ data, selectedId, highlightIds, focusId, flyTo, layout, onSelect, themeId }, ref) {
+  function FamilyTree({ data, selectedId, highlightIds, focusId, flyTo, layout, invert, onSelect, themeId }, ref) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -53,6 +55,8 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     useEffect(() => { focusIdRef.current = focusId; flyToRef.current = flyTo; layoutRef.current = layout; });
     // The painted theme grows a crown with some disorder, like the 1974 tree: switching to it lays out again.
     const painted = getTreeTheme(themeId).shape === 'medallion';
+    // Card connectors only run downwards: only the painted tree turns over.
+    const turned = painted && !!invert;
 
     // Reset layout state when the data changes (during render, not in an effect)
     const [prevData, setPrevData] = useState(data);
@@ -70,7 +74,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
         try {
           const rawGraph = buildDAG(data);
           const style = painted ? 'painted' : layoutRef.current === 'crown' ? 'crown' : 'hourglass';
-          const positions = await runLayout(rawGraph, layoutRef.current === 'layered' ? undefined : focusIdRef.current, style);
+          const positions = await runLayout(rawGraph, layoutRef.current === 'layered' ? undefined : focusIdRef.current, style, turned);
           if (cancelled) return;
 
           // Apply positions back to nodes
@@ -103,12 +107,14 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
               const children = indIds.map(id => nodeById.get(id)).filter(Boolean);
               const xs = children.map(c => c!.x ?? 0);
               const midX = xs.reduce((a, b) => a + b, 0) / xs.length;
-              const minY = Math.min(...children.map(c => c!.y ?? 0));
-              // The row above may already hold someone there: a stub would sit on them.
-              const taken = rawGraph.nodes.some(n => n.type === 'individual' && n.y === minY - GEN_H
+              // Parents' row: above, or below in a tree turned over.
+              const up = turned ? 1 : -1;
+              const edgeY = up < 0 ? Math.min(...children.map(c => c!.y ?? 0)) : Math.max(...children.map(c => c!.y ?? 0));
+              // The row there may already hold someone: a stub would sit on them.
+              const taken = rawGraph.nodes.some(n => n.type === 'individual' && Math.abs((n.y ?? 0) - (edgeY + up * GEN_H)) < GEN_H / 2
                 && Math.abs((n.x ?? 0) - midX) < NODE_W / 2 + 40);
               if (taken) continue;
-              rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: minY - GEN_H });
+              rawGraph.nodes.push({ id: stubId, data: null, type: 'family', isAncestorStub: true, x: midX, y: edgeY + up * GEN_H });
               for (const indId of indIds) {
                 rawGraph.links.push({ source: stubId, target: indId, type: 'ancestor-stub' });
               }
@@ -126,7 +132,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
 
       buildAndLayout();
       return () => { cancelled = true; };
-    }, [data, runLayout, painted]);
+    }, [data, runLayout, painted, turned]);
 
     const fitToView = useCallback(() => {
       if (!canvasContainerRef.current || !graph || !zoomBehaviorRef.current) return;

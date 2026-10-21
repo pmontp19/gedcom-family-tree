@@ -824,23 +824,47 @@ function createAncestorStubMedallions(palette: TreePalette): Container {
 
 function drawBranches(gfx: Graphics, graph: GraphData) {
   const at = (n: GTreeNode) => ({ x: n.x ?? 0, y: n.y ?? 0 });
-  for (const { spouses, children } of groupFamilyEdges(graph)) {
+  const groups = groupFamilyEdges(graph);
+  // A branch is as thick as the family it carries, like a painted trunk: all
+  // the ancestors behind the parents, or all the descendants ahead of the child.
+  const up = new Map<string, string[]>(), down = new Map<string, string[]>();
+  for (const { spouses, children } of groups) {
+    for (const c of children) up.set(c.id, [...(up.get(c.id) ?? []), ...spouses.map(s => s.id)]);
+    for (const s of spouses) down.set(s.id, [...(down.get(s.id) ?? []), ...children.map(c => c.id)]);
+  }
+  const reach = (start: string[], next: Map<string, string[]>) => {
+    const seen = new Set<string>(start);
+    for (const id of seen) for (const n of next.get(id) ?? []) seen.add(n);
+    return seen.size;
+  };
+  const thickness = (parents: string[], child: string) =>
+    Math.min(18, 3 + 1.3 * Math.sqrt(Math.max(reach(parents, up), reach([child], down))));
+  for (const { spouses, children } of groups) {
     const positioned = spouses.filter(s => s.x !== undefined && s.y !== undefined).map(at)
       .sort((p, q) => p.x - q.x);
     let from: { x: number; y: number } | undefined;
+    let lone = false;
     if (positioned.length >= 2) {
       const [l, r] = [positioned[0], positioned[positioned.length - 1]];
-      if (r.x - l.x > 2 * MEDALLION_R) coupleBranch(gfx, l.x + MEDALLION_R, r.x - MEDALLION_R, l.y);
-      from = { x: (l.x + r.x) / 2, y: l.y + 5 };
+      // Partners drifted apart vertically: the bond runs between the medallions' edges.
+      const a = Math.atan2(r.y - l.y, r.x - l.x);
+      if (Math.hypot(r.x - l.x, r.y - l.y) > 2 * MEDALLION_R) {
+        coupleBranch(gfx, l.x + Math.cos(a) * MEDALLION_R, l.y + Math.sin(a) * MEDALLION_R, r.x - Math.cos(a) * MEDALLION_R, r.y - Math.sin(a) * MEDALLION_R);
+      }
+      from = { x: (l.x + r.x) / 2, y: (l.y + r.y) / 2 };
     } else if (positioned.length === 1) {
-      from = { x: positioned[0].x, y: positioned[0].y + MEDALLION_R };
+      from = positioned[0];
+      lone = true;
     }
     // No recorded parents: no branch out of empty space.
     if (!from) continue;
     for (const child of children) {
       if (child.x === undefined || child.y === undefined) continue;
-      const to = { x: child.x, y: child.y - MEDALLION_R };
-      if (to.y > from.y) branch(gfx, from, to);
+      // Children grow below their parents, or above them in a tree turned over.
+      const dir = Math.sign(child.y - from.y);
+      if (Math.abs(child.y - from.y) < MEDALLION_R) continue;
+      const start = { x: from.x, y: from.y + dir * (lone ? MEDALLION_R : 5) };
+      branch(gfx, start, { x: child.x, y: child.y - dir * MEDALLION_R }, { width: thickness(spouses.map(s => s.id), child.id) });
     }
   }
 
@@ -850,6 +874,7 @@ function drawBranches(gfx: Graphics, graph: GraphData) {
     const stub = nodeMap.get(link.source);
     const person = nodeMap.get(link.target);
     if (stub?.x === undefined || stub.y === undefined || person?.x === undefined || person.y === undefined) continue;
-    branch(gfx, { x: stub.x, y: stub.y + STUB_HALF_H }, { x: person.x, y: person.y - MEDALLION_R }, { width: 2.5, leaves: false });
+    const dir = Math.sign(person.y - stub.y);
+    branch(gfx, { x: stub.x, y: stub.y + dir * STUB_HALF_H }, { x: person.x, y: person.y - dir * MEDALLION_R }, { width: 2.5, leaves: false });
   }
 }

@@ -46,6 +46,8 @@ const stage = z.discriminatedUnion('kind', [
       .describe('An ancestor of focusId: only the direct line up to them, and the camera climbs it'),
     alsoFrom: xref.optional()
       .describe('With lineageTo: a second descendant whose own line up to it shows too, as for two cousins'),
+    descendants: z.boolean().default(false)
+      .describe('Everyone descending from focusId, painted like the 1974 tree (them at the trunk, the youngest in the crown); the camera pulls back'),
     whole: z.boolean().default(false)
       .describe('All of focusId\'s ancestors, siblings and their families: the camera starts on them and pulls back until all show'),
   }),

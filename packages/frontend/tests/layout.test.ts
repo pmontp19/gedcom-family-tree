@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { parseGedcom } from '@gedcom/parser';
 import { buildDAG, layoutDAG, GEN_H, type GraphData } from '../src/visualization/dag-builder';
 import { extractSubgraph } from '../src/visualization/subgraph-extractor';
-import { NODE_W } from '../src/visualization/theme';
+import { NODE_W, MEDALLION_R } from '../src/visualization/theme';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(here, '../../parser/tests/fixtures/gedcom70');
@@ -183,7 +183,10 @@ describe('crown: ancestors packed like a painted tree', () => {
 
   it('painted: medallions drift off their rows but never touch', () => {
     const g = layoutDAG(buildDAG(parseGedcom(text)), 'A1', 'painted');
-    boxesApart(g, 2 * 58, 2 * 58);
+    const ns = [...people(g).values()];
+    for (const a of ns) for (const b of ns) {
+      if (a.id < b.id) expect(Math.hypot(a.x! - b.x!, a.y! - b.y!), `${a.id}/${b.id}`).toBeGreaterThanOrEqual(2 * MEDALLION_R);
+    }
     const ys = new Set([...people(g).values()].filter(p => p.y! < 0).map(p => p.y));
     expect(ys.size).toBeGreaterThan(4); // not four flat rows
   });

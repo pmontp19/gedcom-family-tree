@@ -74,6 +74,8 @@ describe('extractLineage', () => {
     const all = storySubset(whole, data);
     for (const id of ['I1', 'I3', 'I6', 'I9', 'I11']) expect(all.individuals.has(id)).toBe(true);
     expect(all.individuals.has('I4')).toBe(false); // an aunt: a cousin's branch, not the line
+    const founder = createStory({ title: 'D', rootId: 'I1', steps: [{ title: 'D', body: 'T', stage: { kind: 'tree', focusId: 'I1', descendants: true } }] });
+    expect(storySubset(founder, data).individuals.has('I11')).toBe(true); // a great-great-grandson
   });
 });
 

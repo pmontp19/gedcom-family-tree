@@ -35,6 +35,7 @@ export interface LayoutRequest {
   /** Lay out around this person (hourglass) instead of the whole forest. */
   focusId?: string;
   style?: LayoutStyle;
+  invert?: boolean;
 }
 
 export interface LayoutResponse {

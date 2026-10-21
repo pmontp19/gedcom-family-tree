@@ -14,9 +14,9 @@ function toGraphData(data: SerializableGraphData): GraphData {
 }
 
 self.onmessage = (e: MessageEvent<LayoutRequest>) => {
-  const { graph, focusId, style } = e.data;
+  const { graph, focusId, style, invert } = e.data;
   const graphData = toGraphData(graph);
-  const result = layoutDAG(graphData, focusId, style);
+  const result = layoutDAG(graphData, focusId, style, invert);
 
   const positions = result.nodes.map(n => ({
     id: n.id,

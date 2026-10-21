@@ -49,6 +49,11 @@ function App() {
   const aiAvailable = AI_ENABLED && !!rawData;
   const agentVisible = aiAvailable && agentOpen;
   const [theme, setTheme] = useState<ThemeId>(getInitialTheme);
+  const [inverted, setInverted] = useState(() => localStorage.getItem('treeInverted') === '1');
+  const toggleInverted = () => setInverted(v => {
+    try { localStorage.setItem('treeInverted', v ? '0' : '1'); } catch { /* private mode: not remembered */ }
+    return !v;
+  });
   const treeRef = useRef<FamilyTreeRef>(null);
 
   useEffect(() => {
@@ -188,11 +193,13 @@ function App() {
               focusId={focusId ?? undefined}
               onSelect={(ind) => selectPerson(ind.id)}
               themeId={theme}
+              invert={inverted}
             />
           </Suspense>
 
           {/* Controls overlay */}
-          <TreeControls onFit={() => treeRef.current?.resetView()} />
+          <TreeControls onFit={() => treeRef.current?.resetView()}
+            inverted={inverted} onInvert={theme === 'heritage' ? toggleInverted : undefined} />
         </div>
 
         {/* Backdrop for mobile panels */}
