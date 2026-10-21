@@ -6,7 +6,8 @@
 import { Graphics } from 'pixi.js';
 import type { TreePalette } from '@/visualization/theme';
 
-export const MEDALLION_R = 58;
+export { MEDALLION_R } from '@/visualization/theme';
+import { MEDALLION_R } from '@/visualization/theme';
 export const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
 
 const FRAME = 0xa8977f;   // taupe ring

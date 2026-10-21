@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
-import type { GraphData } from '@/visualization/dag-builder';
+import type { GraphData, LayoutStyle } from '@/visualization/dag-builder';
 import type { LayoutRequest, LayoutResponse, NodePosition, SerializableGraphData } from '@/visualization/worker-types';
 
 function serializeGraph(graph: GraphData): SerializableGraphData {
@@ -43,7 +43,7 @@ export function useLayoutWorker() {
     return () => worker.terminate();
   }, []);
 
-  const runLayout = useCallback((graph: GraphData, focusId?: string): Promise<NodePosition[]> => {
+  const runLayout = useCallback((graph: GraphData, focusId?: string, style?: LayoutStyle): Promise<NodePosition[]> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current) {
         reject(new Error('Worker not initialized'));
@@ -51,7 +51,7 @@ export function useLayoutWorker() {
       }
       const id = ++seqRef.current;
       pendingRef.current.set(id, { resolve, reject });
-      const msg: LayoutRequest = { type: 'layout', id, graph: serializeGraph(graph), focusId };
+      const msg: LayoutRequest = { type: 'layout', id, graph: serializeGraph(graph), focusId, style };
       workerRef.current.postMessage(msg);
     });
   }, []);

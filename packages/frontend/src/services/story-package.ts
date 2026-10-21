@@ -39,7 +39,7 @@ export function storySubset(story: Story, fullData: GedcomData): GedcomData {
     if (stage.whole) add(extractFamilyTree(data, stage.focusId));
     else if (stage.lineageTo) {
       // Whole families, not the trimmed line: another step may show them in full.
-      for (const id of extractLineage(data, stage.focusId, stage.lineageTo)?.individuals.keys() ?? []) add(extractSubgraph(data, id, 0));
+      for (const id of extractLineage(data, stage.focusId, stage.lineageTo, stage.alsoFrom)?.individuals.keys() ?? []) add(extractSubgraph(data, id, 0));
     } else add(extractSubgraph(data, stage.focusId, stage.generations));
   }
 

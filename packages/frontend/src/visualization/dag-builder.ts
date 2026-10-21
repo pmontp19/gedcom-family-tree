@@ -1,6 +1,6 @@
 import type { GedcomData, Individual, Family } from '@gedcom/shared';
 import { hierarchy, tree } from 'd3-hierarchy';
-import { NODE_W, COUPLE_GAP } from './theme';
+import { NODE_W, COUPLE_GAP, MEDALLION_R } from './theme';
 
 export interface TreeNode {
   id: string;
@@ -62,12 +62,15 @@ interface FamilyUnit {
   children: FamilyUnit[];
 }
 
-export function layoutDAG(graph: GraphData, focusId?: string): GraphData {
+/** Around a person: `hourglass` keeps each couple over its child; `crown` packs the ancestors; `painted` also lets them drift. */
+export type LayoutStyle = 'hourglass' | 'crown' | 'painted';
+
+export function layoutDAG(graph: GraphData, focusId?: string, style: LayoutStyle = 'hourglass'): GraphData {
   if (graph.nodes.length === 0) return graph;
   try {
     // A view built around someone: the hourglass, no crossings. The whole tree: the forest.
     if (focusId && graph.nodes.some(n => n.id === focusId && n.type === 'individual')) {
-      return layoutHourglass(graph, focusId);
+      return style === 'hourglass' ? layoutHourglass(graph, focusId) : layoutCrown(graph, focusId, style === 'painted');
     }
     return layoutFamilyTree(graph);
   } catch (e) {
@@ -567,7 +570,19 @@ export function layoutHourglass(graph: GraphData, focusId: string): GraphData {
     for (const p of parents) placeUp(p);
   }
 
-  placeDown(unit(focusId), 0, 0);
+  // Brothers and sisters share the focus's row, in birth order, each with
+  // their own family below; the focus stays at x = 0.
+  const focusUnit = unit(focusId);
+  const famc = famcOf.get(focusId);
+  const units = (famc ? childrenOf.get(famc) ?? [] : [focusId])
+    .map(id => id === focusId ? focusUnit : claimed.has(id) ? null : unit(id))
+    .filter((u): u is Unit => !!u);
+  const before = units.slice(0, units.indexOf(focusUnit)).reduce((s, u) => s + u.width + GAP, 0);
+  let left = -before - focusUnit.width / 2;
+  for (const u of units) {
+    placeDown(u, left + u.width / 2, 0);
+    left += u.width + GAP;
+  }
   placeUp(focusId);
 
   // ── Leftovers (a partner's other partners): beside whoever they married, on a free side.
@@ -603,6 +618,97 @@ export function layoutHourglass(graph: GraphData, focusId: string): GraphData {
       n.y = kids[0].y! - GEN_H;
     } else {
       n.x = 0; n.y = 0;
+    }
+  }
+  return graph;
+}
+
+/**
+ * Layout around one person, grown like the painted 1974 tree: the hourglass
+ * below and on the person's row, but the ancestors packed into a crown. Each
+ * couple's parents are fitted level by level against their neighbours (a
+ * tidy tree) instead of keeping a column as wide as their whole ancestry, so
+ * the tree is far narrower and a couple may lean a little off its child.
+ * `organic` adds a hand-placed unevenness: rows break, couples drift.
+ */
+export function layoutCrown(graph: GraphData, focusId: string, organic = false): GraphData {
+  layoutHourglass(graph, focusId);
+  // Medallions are narrower than cards: a painted crown packs them closer.
+  const SLOT = organic ? 2 * MEDALLION_R + 22 : NODE_W + COUPLE_GAP;
+  const ITEM = organic ? 2 * MEDALLION_R : NODE_W;
+  const nodeById = new Map(graph.nodes.map(n => [n.id, n]));
+  const spousesOf = new Map<string, string[]>();
+  const famsOf = new Map<string, string[]>();
+  const famcOf = new Map<string, string>();
+  const childrenOf = new Map<string, string[]>();
+  const push = (m: Map<string, string[]>, k: string, v: string) => m.set(k, [...(m.get(k) ?? []), v]);
+  for (const link of graph.links) {
+    const isPerson = (id: string) => nodeById.get(id)?.type === 'individual';
+    if (link.type === 'marriage' && isPerson(link.source)) {
+      push(spousesOf, link.target, link.source);
+      push(famsOf, link.source, link.target);
+    } else if (link.type === 'child' && isPerson(link.target)) {
+      push(childrenOf, link.source, link.target);
+      if (!famcOf.has(link.target)) famcOf.set(link.target, link.source);
+    }
+  }
+
+  // A couple of ancestors, their other partners on the outer sides; above
+  // them, the couples that are each one's parents.
+  interface Couple { members: string[]; width: number; above: Couple[] }
+  const seen = new Set<string>();
+  const used = new Set<string>(); // someone in two couples (a widow remarried in the line) sits once
+  const above = (y: number) => (id: string) => (nodeById.get(id)?.y ?? 0) < y;
+  function couple(fam: string): Couple | null {
+    if (seen.has(fam)) return null; // the same ancestors reached twice: drawn once
+    seen.add(fam);
+    const [h, w] = spousesOf.get(fam) ?? [];
+    if (!h) return null;
+    const others = (id?: string) => (id ? famsOf.get(id) ?? [] : []).filter(f => f !== fam)
+      .flatMap(f => spousesOf.get(f) ?? []).filter(p => p !== id && above(0)(p));
+    const members = [...others(h), h, ...(w ? [w] : []), ...others(w)].filter(p => !used.has(p) && !!used.add(p));
+    const ups = [h, w].flatMap(p => (p && famcOf.get(p)) || []).map(couple).filter((c): c is Couple => !!c);
+    return { members, width: (members.length - 1) * SLOT + ITEM, above: ups };
+  }
+  const rootFam = famcOf.get(focusId);
+  const root = rootFam ? couple(rootFam) : null;
+  if (root) {
+    const h = hierarchy(root, c => c.above);
+    tree<Couple>().nodeSize([1, GEN_H])
+      .separation((a, b) => (a.data.width + b.data.width) / 2 + (organic ? 26 : 40))(h);
+    // Centre the crown over the brothers and sisters it grows from.
+    const row = (childrenOf.get(rootFam!) ?? []).map(id => nodeById.get(id)?.x).filter((x): x is number => x !== undefined);
+    const shift = (row.length ? (Math.min(...row) + Math.max(...row)) / 2 : 0) - h.x!;
+    for (const d of h.descendants()) {
+      const left = d.x! + shift - (d.data.members.length - 1) * SLOT / 2;
+      d.data.members.forEach((id, i) => {
+        const n = nodeById.get(id)!;
+        n.x = left + i * SLOT;
+        n.y = -(d.depth + 1) * GEN_H;
+      });
+    }
+  }
+
+  if (organic) {
+    // Stable per person: the same tree always grows the same way.
+    const wobble = (id: string, salt: number) => {
+      let s = salt;
+      for (const ch of id) s = (s * 31 + ch.charCodeAt(0)) % 9973;
+      return (s / 9973) * 2 - 1;
+    };
+    for (const fam of spousesOf.keys()) {
+      const sp = (spousesOf.get(fam) ?? []).map(id => nodeById.get(id)!).filter(n => (n.y ?? 0) < 0);
+      const dy = wobble(fam, 7) * GEN_H * 0.16; // a couple drifts together
+      for (const n of sp) { n.y! += dy; n.x! += wobble(n.id, 3) * 12; }
+    }
+  }
+
+  for (const n of graph.nodes) {
+    if (n.type !== 'family') continue;
+    const sp = (spousesOf.get(n.id) ?? []).map(id => nodeById.get(id)!).filter(s => s.x !== undefined);
+    if (sp.length) {
+      n.x = sp.reduce((s, p) => s + p.x!, 0) / sp.length;
+      n.y = sp.reduce((s, p) => s + p.y!, 0) / sp.length;
     }
   }
   return graph;

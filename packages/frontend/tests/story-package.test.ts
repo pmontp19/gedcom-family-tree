@@ -61,6 +61,10 @@ describe('extractLineage', () => {
     for (const fam of line.families.values()) expect(fam.children).toHaveLength(1);
     expect(data.families.get([...line.families.keys()][0])!.children.length).toBeGreaterThan(0); // untouched
     expect(extractLineage(data, 'I1', 'I11')).toBeNull(); // a descendant is not an ancestor
+    // Two cousins' lines meet at I3: his family shows both children.
+    const two = extractLineage(data, 'I11', 'I3', 'I8')!;
+    expect(two.individuals.has('I8')).toBe(true);
+    expect(two.families.get('F2')!.children.sort()).toEqual(['I6', 'I8']);
   });
 
   it('packages whole families for a lineage step, all ancestors and siblings for a whole-tree step', () => {

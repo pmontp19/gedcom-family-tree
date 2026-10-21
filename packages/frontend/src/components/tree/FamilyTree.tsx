@@ -18,6 +18,8 @@ interface FamilyTreeProps {
   focusId?: string;
   /** After the first view, glide the camera from the focus to this person, or pull back to the whole tree. */
   flyTo?: string | 'all';
+  /** Around the focus, the ancestors packed into a crown; or the layered forest, for lines that meet. */
+  layout?: 'crown' | 'layered';
   onSelect?: (individual: Individual) => void;
   themeId?: ThemeId;
 }
@@ -37,7 +39,7 @@ function getDetailLevel(k: number): DetailLevel {
 }
 
 export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
-  function FamilyTree({ data, selectedId, highlightIds, focusId, flyTo, onSelect, themeId }, ref) {
+  function FamilyTree({ data, selectedId, highlightIds, focusId, flyTo, layout, onSelect, themeId }, ref) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -47,7 +49,10 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
     // Read by the first fit only; a new focus always comes with a new graph.
     const focusIdRef = useRef(focusId);
     const flyToRef = useRef(flyTo);
-    useEffect(() => { focusIdRef.current = focusId; flyToRef.current = flyTo; });
+    const layoutRef = useRef(layout);
+    useEffect(() => { focusIdRef.current = focusId; flyToRef.current = flyTo; layoutRef.current = layout; });
+    // The painted theme grows a crown with some disorder, like the 1974 tree: switching to it lays out again.
+    const painted = getTreeTheme(themeId).shape === 'medallion';
 
     // Reset layout state when the data changes (during render, not in an effect)
     const [prevData, setPrevData] = useState(data);
@@ -64,9 +69,8 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
       const buildAndLayout = async () => {
         try {
           const rawGraph = buildDAG(data);
-          // The hourglass places the focus's brothers and sisters rows below
-          // them: a whole tree, which has them, takes the layered layout.
-          const positions = await runLayout(rawGraph, flyToRef.current === 'all' ? undefined : focusIdRef.current);
+          const style = painted ? 'painted' : layoutRef.current === 'crown' ? 'crown' : 'hourglass';
+          const positions = await runLayout(rawGraph, layoutRef.current === 'layered' ? undefined : focusIdRef.current, style);
           if (cancelled) return;
 
           // Apply positions back to nodes
@@ -122,7 +126,7 @@ export const FamilyTree = forwardRef<FamilyTreeRef, FamilyTreeProps>(
 
       buildAndLayout();
       return () => { cancelled = true; };
-    }, [data, runLayout]);
+    }, [data, runLayout, painted]);
 
     const fitToView = useCallback(() => {
       if (!canvasContainerRef.current || !graph || !zoomBehaviorRef.current) return;

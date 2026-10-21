@@ -109,6 +109,20 @@ describe('layoutDAG', () => {
       }
     }
 
+    it('puts brothers and sisters on the focus row, with their families below', () => {
+      const SIBLINGS = ged(
+        ...['F', 'A', 'B', 'K'].map(id => indi(id, 'M')), ...['M', 'X', 'W'].map(id => indi(id, 'F')),
+        fam('F1', 'F', 'M', 'A', 'X', 'B'), fam('F2', 'B', 'W', 'K'),
+      );
+      const g = layoutDAG(buildDAG(parseGedcom(SIBLINGS)), 'X');
+      expectSaneLayout(g);
+      const n = people(g);
+      for (const id of ['A', 'B', 'W']) expect(n.get(id)!.y).toBe(n.get('X')!.y);
+      expect(n.get('A')!.x!).toBeLessThan(n.get('X')!.x!);
+      expect(n.get('B')!.x!).toBeGreaterThan(n.get('X')!.x!);
+      expect(n.get('K')!.y).toBe(n.get('X')!.y! + GEN_H);
+    });
+
     it('centres every couple over their child, partners side by side, nothing crossed', () => {
       const g = around(FAMILY, 'X', 3);
       expectSaneLayout(g);
@@ -138,3 +152,40 @@ describe('layoutDAG', () => {
     });
   });
 });
+
+describe('crown: ancestors packed like a painted tree', () => {
+  // Four full generations above A1 (Ahnentafel numbers), and a sister.
+  const recs: string[] = [];
+  for (let k = 1; k < 32; k++) recs.push(indi(`A${k}`, k % 2 ? 'F' : 'M'));
+  recs.push(indi('SIS', 'F'));
+  for (let k = 1; k < 16; k++) recs.push(fam(`F${k}`, `A${2 * k}`, `A${2 * k + 1}`, `A${k}`, ...(k === 1 ? ['SIS'] : [])));
+  const text = ged(...recs);
+  const span = (g: GraphData) => {
+    const xs = [...people(g).values()].map(n => n.x!);
+    return Math.max(...xs) - Math.min(...xs);
+  };
+  const boxesApart = (g: GraphData, w: number, h: number) => {
+    const ns = [...people(g).values()];
+    for (const a of ns) for (const b of ns) {
+      if (a.id < b.id) expect(Math.abs(a.x! - b.x!) >= w || Math.abs(a.y! - b.y!) >= h, `${a.id}/${b.id}`).toBe(true);
+    }
+  };
+
+  it('is no wider than the hourglass, nobody overlaps, each generation a row up', () => {
+    const crown = layoutDAG(buildDAG(parseGedcom(text)), 'A1', 'crown');
+    const hourglass = layoutDAG(buildDAG(parseGedcom(text)), 'A1');
+    expect(span(crown)).toBeLessThanOrEqual(span(hourglass));
+    boxesApart(crown, NODE_W, 1);
+    const n = people(crown);
+    expect(n.get('SIS')!.y).toBe(n.get('A1')!.y);
+    expect(n.get('A16')!.y).toBe(n.get('A1')!.y! - 4 * GEN_H);
+  });
+
+  it('painted: medallions drift off their rows but never touch', () => {
+    const g = layoutDAG(buildDAG(parseGedcom(text)), 'A1', 'painted');
+    boxesApart(g, 2 * 58, 2 * 58);
+    const ys = new Set([...people(g).values()].filter(p => p.y! < 0).map(p => p.y));
+    expect(ys.size).toBeGreaterThan(4); // not four flat rows
+  });
+});
+

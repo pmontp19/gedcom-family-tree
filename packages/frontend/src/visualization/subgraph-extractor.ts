@@ -118,9 +118,25 @@ export function extractFamilyTree(data: GedcomData, id: string): GedcomData {
 
 /**
  * The direct line from someone up to one of their ancestors: each generation's
- * couple and nothing else. Null when the ancestor is not theirs.
+ * couple and nothing else. With `alsoFrom`, a second descendant's line up to
+ * the same ancestor joins it: two cousins and what they share. Null when the
+ * ancestor is not theirs.
  */
-export function extractLineage(data: GedcomData, fromId: string, toId: string): GedcomData | null {
+export function extractLineage(data: GedcomData, fromId: string, toId: string, alsoFrom?: string): GedcomData | null {
+  const line = lineage(data, fromId, toId);
+  if (!line || !alsoFrom) return line;
+  const other = lineage(data, alsoFrom, toId);
+  if (!other) return null;
+  for (const [id, ind] of other.individuals) line.individuals.set(id, ind);
+  for (const [id, fam] of other.families) {
+    // Where both lines meet, that couple has both children on show.
+    const mine = line.families.get(id);
+    line.families.set(id, mine ? { ...fam, children: [...new Set([...mine.children, ...fam.children])] } : fam);
+  }
+  return line;
+}
+
+function lineage(data: GedcomData, fromId: string, toId: string): GedcomData | null {
   // BFS up the parents: the shortest line wins when cousins married.
   const via = new Map<string, { child: string; fam: string } | null>([[fromId, null]]);
   const queue = [fromId];
