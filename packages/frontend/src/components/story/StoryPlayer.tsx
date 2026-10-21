@@ -16,6 +16,8 @@ interface StoryPlayerProps {
   story: Story;
   data: GedcomData;
   themeId: ThemeId;
+  /** Package audio files by zip path, for steps with recorded narration. */
+  audio?: Map<string, string>;
   onClose: () => void;
 }
 
@@ -31,7 +33,7 @@ const yearOf = (date?: string) => date?.match(/\b(1[0-9]{3}|20[0-9]{2})\b/)?.[1]
 /** -1 is the cover. */
 const COVER = -1;
 
-export function StoryPlayer({ story, data: fullData, themeId, onClose }: StoryPlayerProps) {
+export function StoryPlayer({ story, data: fullData, themeId, audio, onClose }: StoryPlayerProps) {
   const data = useMemo(() => withoutPeople(fullData, story.hidden), [fullData, story.hidden]);
   const [index, setIndex] = useState(COVER);
   const [playing, setPlaying] = useState(false);
@@ -50,7 +52,8 @@ export function StoryPlayer({ story, data: fullData, themeId, onClose }: StoryPl
 
   // With the voice on, the narration paces autoplay instead of the timer.
   const narrating = playing && voiceOn && !!step;
-  const spoken = useNarration(step ? `${step.title}. ${step.body}` : '', narrating, next);
+  const narrationAudio = step?.audio ? audio?.get(step.audio) : undefined;
+  const spoken = useNarration(step ? `${step.title}. ${step.body}` : '', narrating, next, narrationAudio);
 
   useEffect(() => {
     if (!fullscreen) return;

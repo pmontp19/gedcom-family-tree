@@ -75,6 +75,8 @@ const storyStep = z.object({
   title: z.string(),
   date: z.string().optional().describe('When this step happens, free text: "1912", "cap a 1880"'),
   body: z.string().describe('Narrative; a blank line starts a new paragraph'),
+  audio: z.string().optional()
+    .describe('Recorded narration instead of the browser voice, as a package path: "audio/cap01.wav"'),
   people: z.array(xref).default([]).describe('Individual ids this step is about; highlighted'),
   highlights: z.array(z.string()).default([]).describe('Key facts, shown as callouts'),
   notes: z.array(z.string()).default([]).describe('Research notes: doubts, sources to check'),
